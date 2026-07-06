@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="owner.css">
+    <title>Owner Portal - La Maison</title>
+</head>
+<body>
+
+<div id="app">
+
+    <!-- ─── OWNER LOGIN ─── -->
+    <section id="section-login" class="section active">
+        <div class="form-container">
+            <div class="brand">La Maison</div>
+            <div class="auth-tabs">
+                <span class="auth-tab active" onclick="switchAuthTab('login')">Sign In</span>
+                <span class="auth-tab" onclick="switchAuthTab('register')">Info</span>
+            </div>
+            <div id="authLoginForm">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" value="owner@cafe.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" required placeholder="&bull;&bull;&bull;&bull;&bull;&bull;">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+                <div id="loginMsg" class="msg"></div>
+            </div>
+            <div id="authRegisterForm" style="display:none;">
+                <p class="form-desc">Owner account is pre-configured.</p>
+                <p class="form-desc">Email: <strong>owner@cafe.com</strong></p>
+                <p class="form-desc">Password: <strong>owner123</strong></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── OWNER DASHBOARD ─── -->
+    <section id="section-dashboard" class="section">
+        <nav class="nav">
+            <div class="nav-brand">La Maison</div>
+            <div class="nav-user">
+                <span id="userInfo"></span>
+                <button class="btn btn-danger btn-small" onclick="logout()">Logout</button>
+            </div>
+        </nav>
+        <div class="dashboard">
+            <div class="dashboard-header">
+                <h2>Owner Dashboard</h2>
+            </div>
+            <div class="dashboard-tabs">
+                <button class="tab-btn active" onclick="switchTab('users')">Users</button>
+                <button class="tab-btn" onclick="switchTab('bookings')">Bookings</button>
+                <button class="tab-btn" onclick="switchTab('pending')">Pending Staff</button>
+                <button class="tab-btn" onclick="switchTab('staff')">Manage Staff</button>
+                <button class="tab-btn" onclick="switchTab('add')">Add Staff</button>
+            </div>
+            <div id="tabUsers" class="tab-content active">
+                <h3>All Users</h3>
+                <div id="usersList" class="data-table-wrapper"></div>
+            </div>
+            <div id="tabBookings" class="tab-content">
+                <h3>All Bookings</h3>
+                <div id="bookingsList" class="data-table-wrapper"></div>
+            </div>
+            <div id="tabPending" class="tab-content">
+                <h3>Staff Approval Requests</h3>
+                <div id="pendingList" class="data-table-wrapper"></div>
+            </div>
+            <div id="tabStaff" class="tab-content">
+                <h3>All Staff Members</h3>
+                <div id="staffList" class="data-table-wrapper"></div>
+            </div>
+            <div id="tabAdd" class="tab-content">
+                <h3>Add New Staff Member</h3>
+                <form id="addStaffForm" class="compact-form">
+                    <div class="form-group">
+                        <label for="addStaffName">Name</label>
+                        <input type="text" id="addStaffName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="addStaffEmail">Email</label>
+                        <input type="email" id="addStaffEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="addStaffPhone">Phone</label>
+                        <input type="tel" id="addStaffPhone">
+                    </div>
+                    <div class="form-group">
+                        <label for="addStaffPassword">Password</label>
+                        <input type="password" id="addStaffPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Staff</button>
+                </form>
+                <div id="addStaffMsg" class="msg"></div>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<script>
+const API = "";
+let token = localStorage.getItem("ownerToken");
+let user = JSON.parse(localStorage.getItem("ownerUser") || "null");
+
+function showSection(id) {
+  document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
+  document.getElementById("section-" + id).classList.add("active");
+}
+
+function showMsg(elId, text, type) {
+  const el = document.getElementById(elId);
+  el.textContent = text;
+  el.className = "msg " + type;
+}
+
+function clearMsg(elId) {
+  document.getElementById(elId).textContent = "";
+  document.getElementById(elId).className = "msg";
+}
+
+function logout() {
+  localStorage.removeItem("ownerToken");
+  localStorage.removeItem("ownerUser");
+  token = null;
+  user = null;
+  showSection("login");
+  document.getElementById("userInfo").textContent = "";
+}
+
+// ─── AUTH TAB SWITCHING ───
+function switchAuthTab(tab) {
+  document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
+  if (tab === "login") {
+    document.querySelector(".auth-tab:nth-child(1)").classList.add("active");
+    document.getElementById("authLoginForm").style.display = "block";
+    document.getElementById("authRegisterForm").style.display = "none";
+  } else {
+    document.querySelector(".auth-tab:nth-child(2)").classList.add("active");
+    document.getElementById("authLoginForm").style.display = "none";
+    document.getElementById("authRegisterForm").style.display = "block";
+  }
+}
+
+// ─── LOGIN ───
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  clearMsg("loginMsg");
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
+  try {
+    const res = await fetch(API + "/api/owner/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showMsg("loginMsg", data.error, "error");
+    token = data.token;
+    user = data.user;
+    localStorage.setItem("ownerToken", token);
+    localStorage.setItem("ownerUser", JSON.stringify(user));
+    document.getElementById("userInfo").textContent = "Owner";
+    loadDashboard();
+    showSection("dashboard");
+  } catch {
+    showMsg("loginMsg", "Connection error", "error");
+  }
+});
+
+// ─── DASHBOARD ───
+async function loadDashboard() {
+  try {
+    const [usersRes, bookingsRes, pendingRes, staffRes] = await Promise.all([
+      fetch(API + "/api/users/all", { headers: { Authorization: "Bearer " + token } }),
+      fetch(API + "/api/bookings/all", { headers: { Authorization: "Bearer " + token } }),
+      fetch(API + "/api/staff/pending", { headers: { Authorization: "Bearer " + token } }),
+      fetch(API + "/api/staff/all", { headers: { Authorization: "Bearer " + token } }),
+    ]);
+    if (!usersRes.ok) throw new Error("Auth failed");
+
+    const users = await usersRes.json();
+    const bookings = await bookingsRes.json();
+    const pending = await pendingRes.json();
+    const allStaff = await staffRes.json();
+
+    // Users
+    const usersList = document.getElementById("usersList");
+    if (!users.length) {
+      usersList.innerHTML = "<p class='empty'>No registered users.</p>";
+    } else {
+      let html = `<table class="data-table"><thead><tr>
+        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th>
+      </tr></thead><tbody>`;
+      users.forEach((u) => {
+        html += `<tr>
+          <td>${u.id}</td>
+          <td>${u.name}</td>
+          <td>${u.email}</td>
+          <td>${u.phone || "-"}</td>
+          <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      usersList.innerHTML = html;
+    }
+
+    // Bookings
+    const bookingsList = document.getElementById("bookingsList");
+    if (!bookings.length) {
+      bookingsList.innerHTML = "<p class='empty'>No bookings yet.</p>";
+    } else {
+      let html = `<table class="data-table"><thead><tr>
+        <th>ID</th><th>User</th><th>Date</th><th>Time</th><th>Guests</th><th>Table</th><th>Status</th>
+      </tr></thead><tbody>`;
+      bookings.forEach((b) => {
+        html += `<tr>
+          <td>${b.id}</td>
+          <td>${b.userName}</td>
+          <td>${b.date}</td>
+          <td>${b.time}</td>
+          <td>${b.guests}</td>
+          <td>${b.tableLabel || "T" + b.tableId}</td>
+          <td><span class="badge ${b.status}">${b.status}</span></td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      bookingsList.innerHTML = html;
+    }
+
+    // Pending staff
+    const pendingList = document.getElementById("pendingList");
+    if (!pending.length) {
+      pendingList.innerHTML = "<p class='empty'>No pending staff requests.</p>";
+    } else {
+      pendingList.innerHTML = "";
+      pending.forEach((s) => {
+        const div = document.createElement("div");
+        div.className = "pending-request";
+        div.innerHTML = `
+          <div>
+            <strong>${s.name}</strong> (${s.email})<br>
+            <small>Phone: ${s.phone || "-"} | Requested: ${new Date(s.createdAt).toLocaleDateString()}</small>
+          </div>
+          <div class="actions">
+            <button class="btn btn-success btn-small" onclick="approveStaff(${s.id})">Approve</button>
+            <button class="btn btn-danger btn-small" onclick="rejectStaff(${s.id})">Reject</button>
+          </div>
+        `;
+        pendingList.appendChild(div);
+      });
+    }
+
+    // All staff
+    const staffList = document.getElementById("staffList");
+    if (!allStaff.length) {
+      staffList.innerHTML = "<p class='empty'>No staff members.</p>";
+    } else {
+      let html = `<table class="data-table"><thead><tr>
+        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Added</th>
+      </tr></thead><tbody>`;
+      allStaff.forEach((s) => {
+        html += `<tr>
+          <td>${s.id}</td>
+          <td>${s.name}</td>
+          <td>${s.email}</td>
+          <td>${s.phone || "-"}</td>
+          <td><span class="badge ${s.status}">${s.status}</span></td>
+          <td>${new Date(s.createdAt).toLocaleDateString()}</td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      staffList.innerHTML = html;
+    }
+  } catch (err) {
+    if (err.message === "Auth failed") {
+      logout();
+      showMsg("loginMsg", "Session expired. Please login again.", "error");
+    }
+  }
+}
+
+async function approveStaff(id) {
+  try {
+    const res = await fetch(API + "/api/staff/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ staffId: id }),
+    });
+    if (!res.ok) return alert((await res.json()).error);
+    loadDashboard();
+  } catch {
+    alert("Error approving staff");
+  }
+}
+
+async function rejectStaff(id) {
+  try {
+    const res = await fetch(API + "/api/staff/reject", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ staffId: id }),
+    });
+    if (!res.ok) return alert((await res.json()).error);
+    loadDashboard();
+  } catch {
+    alert("Error rejecting staff");
+  }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+  const btns = document.querySelectorAll(".tab-btn");
+  const tabs = ["users", "bookings", "pending", "staff", "add"];
+  const idx = tabs.indexOf(tab);
+  if (idx >= 0) {
+    btns[idx].classList.add("active");
+    document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add("active");
+  }
+}
+
+// ─── ADD STAFF ───
+document.getElementById("addStaffForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  clearMsg("addStaffMsg");
+  const name = document.getElementById("addStaffName").value;
+  const email = document.getElementById("addStaffEmail").value;
+  const phone = document.getElementById("addStaffPhone").value;
+  const password = document.getElementById("addStaffPassword").value;
+  try {
+    const res = await fetch(API + "/api/staff/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ name, email, password, phone }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showMsg("addStaffMsg", data.error, "error");
+    showMsg("addStaffMsg", "Staff " + data.staff.name + " added successfully!", "success");
+    document.getElementById("addStaffForm").reset();
+    loadDashboard();
+  } catch {
+    showMsg("addStaffMsg", "Connection error", "error");
+  }
+});
+
+// ─── INIT ───
+if (token && user) {
+  document.getElementById("userInfo").textContent = "Owner";
+  loadDashboard();
+  showSection("dashboard");
+}
+</script>
+</body>
+</html>

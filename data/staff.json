@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Staff",
+    "email": "s@s.com",
+    "password": "$2a$10$UidyOVU7xlo9SsMtYS3k/uUOgVG54tws6L97KABlpTGWNctLUl9CS",
+    "phone": "",
+    "status": "approved",
+    "createdAt": "2026-07-06T05:45:41.903Z"
+  },
+  {
+    "id": 2,
+    "name": "Venish Chavan",
+    "email": "chavanvenish6@gmail.com",
+    "password": "$2a$10$ActtdCpBIQMB0KY/UhDXOeHRpJKcg08d8rt70JZS4dJv8FtDSyrbO",
+    "phone": "",
+    "status": "rejected",
+    "createdAt": "2026-07-06T13:11:07.049Z"
+  }
+]

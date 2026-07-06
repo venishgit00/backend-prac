@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>La Maison - Cafe & Restaurant</title>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="nav-brand">La Maison</div>
+    <div class="nav-links" id="navLinks"></div>
+    <div class="nav-user" id="navUser"></div>
+</nav>
+
+<div id="app">
+
+    <!-- ─── HOME ─── -->
+    <section id="section-home" class="section active">
+        <div class="hero">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <h1>La Maison</h1>
+                <p>Exquisite dining in the heart of the city</p>
+                <div class="hero-buttons">
+                    <button class="btn btn-primary" onclick="showSection('booking')">Book a Table</button>
+                    <button class="btn btn-outline" onclick="showSection('userLogin')">Sign In</button>
+                </div>
+            </div>
+        </div>
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">&#127860;</div>
+                <h3>Fine Dining</h3>
+                <p>Experience culinary excellence with our carefully crafted menu</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#127870;</div>
+                <h3>Premium Drinks</h3>
+                <p>Handpicked selection of wines, cocktails, and spirits</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128197;</div>
+                <h3>Reserve Easily</h3>
+                <p>Book your table online and skip the wait</p>
+            </div>
+        </div>
+
+        <!-- ─── OFFERS CAROUSEL ─── -->
+        <div class="offers-section">
+            <h2 class="section-title">Today's Offers</h2>
+            <div class="carousel-container">
+                <button class="carousel-btn carousel-prev" onclick="slideOffers(-1)">&#10094;</button>
+                <div class="carousel-track" id="carouselTrack">
+                    <div class="carousel-slide">
+                        <img src="" alt="Offer 1" class="offer-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="offer-placeholder" style="display:none;">Insert your image here</div>
+                        <div class="offer-label">Special Offer 1</div>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="" alt="Offer 2" class="offer-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="offer-placeholder" style="display:none;">Insert your image here</div>
+                        <div class="offer-label">Special Offer 2</div>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="" alt="Offer 3" class="offer-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="offer-placeholder" style="display:none;">Insert your image here</div>
+                        <div class="offer-label">Special Offer 3</div>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="" alt="Offer 4" class="offer-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="offer-placeholder" style="display:none;">Insert your image here</div>
+                        <div class="offer-label">Special Offer 4</div>
+                    </div>
+                </div>
+                <button class="carousel-btn carousel-next" onclick="slideOffers(1)">&#10095;</button>
+                <div class="carousel-dots" id="carouselDots"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── USER LOGIN / REGISTER ─── -->
+    <section id="section-userLogin" class="section">
+        <div class="form-container">
+            <div class="auth-tabs">
+                <span class="auth-tab active" onclick="switchAuthTab('login')">Sign In</span>
+                <span class="auth-tab" onclick="switchAuthTab('register')">Register</span>
+            </div>
+            <div id="authLoginForm">
+                <form id="userLoginForm">
+                    <div class="form-group">
+                        <label for="userLoginEmail">Email</label>
+                        <input type="email" id="userLoginEmail" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="userLoginPassword">Password</label>
+                        <input type="password" id="userLoginPassword" required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+                <div id="userLoginMsg" class="msg"></div>
+            </div>
+            <div id="authRegisterForm" style="display:none;">
+                <form id="userRegisterForm">
+                    <div class="form-group">
+                        <label for="userRegName">Full Name</label>
+                        <input type="text" id="userRegName" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="userRegEmail">Email</label>
+                        <input type="email" id="userRegEmail" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="userRegPhone">Phone</label>
+                        <input type="tel" id="userRegPhone" placeholder="+1 234 567 890">
+                    </div>
+                    <div class="form-group">
+                        <label for="userRegPassword">Password</label>
+                        <input type="password" id="userRegPassword" required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Register</button>
+                </form>
+                <div id="userRegMsg" class="msg"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── BOOKING ─── -->
+    <section id="section-booking" class="section">
+        <div class="booking-wrapper">
+            <h2>Book a Table</h2>
+            <div id="bookingAuthMsg" class="msg">Please <a onclick="showSection('userLogin')">login</a> to book a table.</div>
+            <div id="bookingContent" style="display:none;">
+                <div class="booking-controls">
+                    <div class="form-group">
+                        <label for="bookingDate">Date</label>
+                        <input type="date" id="bookingDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingTime">Time</label>
+                        <select id="bookingTime">
+                            <option value="12:00">12:00 PM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="18:00">6:00 PM</option>
+                            <option value="19:00" selected>7:00 PM</option>
+                            <option value="20:00">8:00 PM</option>
+                            <option value="21:00">9:00 PM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingGuests">Guests</label>
+                        <select id="bookingGuests">
+                            <option value="1">1 Guest</option>
+                            <option value="2" selected>2 Guests</option>
+                            <option value="3">3 Guests</option>
+                            <option value="4">4 Guests</option>
+                            <option value="5">5 Guests</option>
+                            <option value="6">6 Guests</option>
+                            <option value="7">7 Guests</option>
+                            <option value="8">8 Guests</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="checkAvailability()">Check Availability</button>
+                </div>
+
+                <div class="seat-map-container">
+                    <h3>Restaurant Floor Plan</h3>
+                    <div class="legend">
+                        <span><span class="dot available"></span> Available</span>
+                        <span><span class="dot booked-dot"></span> Booked</span>
+                        <span><span class="dot selected-dot"></span> Selected</span>
+                    </div>
+                    <div id="seatMap" class="seat-map"></div>
+                    <p id="selectedTableInfo" class="selected-info"></p>
+                    <button class="btn btn-primary" id="confirmBookingBtn" onclick="confirmBooking()" style="display:none;">Confirm Booking</button>
+                </div>
+
+                <div id="myBookings">
+                    <h3>My Bookings</h3>
+                    <div id="myBookingsList"></div>
+                </div>
+            </div>
+            <div id="bookingMsg" class="msg"></div>
+        </div>
+    </section>
+</div>
+<script src="script.js"></script>
+</body>
+</html>

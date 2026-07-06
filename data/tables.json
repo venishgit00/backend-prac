@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "capacity": 2,
+    "x": 5,
+    "y": 5,
+    "label": "T1"
+  },
+  {
+    "id": 2,
+    "capacity": 2,
+    "x": 25,
+    "y": 5,
+    "label": "T2"
+  },
+  {
+    "id": 3,
+    "capacity": 4,
+    "x": 50,
+    "y": 5,
+    "label": "T3"
+  },
+  {
+    "id": 4,
+    "capacity": 4,
+    "x": 75,
+    "y": 5,
+    "label": "T4"
+  },
+  {
+    "id": 5,
+    "capacity": 6,
+    "x": 5,
+    "y": 40,
+    "label": "T5"
+  },
+  {
+    "id": 6,
+    "capacity": 2,
+    "x": 30,
+    "y": 40,
+    "label": "T6"
+  },
+  {
+    "id": 7,
+    "capacity": 4,
+    "x": 55,
+    "y": 40,
+    "label": "T7"
+  },
+  {
+    "id": 8,
+    "capacity": 6,
+    "x": 5,
+    "y": 75,
+    "label": "T8"
+  },
+  {
+    "id": 9,
+    "capacity": 4,
+    "x": 35,
+    "y": 75,
+    "label": "T9"
+  },
+  {
+    "id": 10,
+    "capacity": 2,
+    "x": 65,
+    "y": 75,
+    "label": "T10"
+  }
+]

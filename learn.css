@@ -1,0 +1,113 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    background-color: rgb(45, 43, 43);
+    font-family: Arial, sans-serif;
+    overflow-x: hidden;
+}
+
+.nav {
+    background-color: beige;
+    padding: 2vh 0;
+    width: 100%;
+}
+
+.nav-opt {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3rem;
+    color: #333;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.nav-opt span {
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.nav-opt span:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.hero {
+    text-align: center;
+    padding: 6rem 2rem;
+    color: beige;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+.form-section {
+    max-width: 500px;
+    margin: 0 auto 4rem auto;
+    padding: 2rem;
+    background-color: beige;
+    border-radius: 10px;
+}
+
+.form-section h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 1.2rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #333;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    font-size: 1rem;
+    background-color: #fff;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-section button {
+    width: 100%;
+    padding: 0.7rem;
+    background-color: rgb(45, 43, 43);
+    color: beige;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.form-section button:hover {
+    background-color: #5a5a5a;
+}
