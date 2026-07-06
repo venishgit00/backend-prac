@@ -198,7 +198,7 @@ function selectTable(tableId) {
   if (!cell) return;
   cell.classList.add("selected");
   selectedTableId = tableId;
-  const tableLabel = cell.textContent.trim().split("Ⓟ")[0];
+  const tableLabel = cell.textContent.trim().replace(/\d+p$/, "").trim();
   document.getElementById("selectedTableInfo").textContent = `Selected: ${tableLabel} | Guests: ${document.getElementById("bookingGuests").value}`;
   document.getElementById("confirmBookingBtn").style.display = "block";
 }
