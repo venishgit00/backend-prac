@@ -78,9 +78,27 @@ function initDB() {
 initDB();
 
 // ─── HELPERS ───
+function parseCookies(req) {
+  const cookie = req.headers.cookie;
+  if (!cookie) return {};
+  return Object.fromEntries(
+    cookie.split(";").map((c) => c.trim().split("=")).map(([k, v]) => [k, decodeURIComponent(v)])
+  );
+}
+
+function setTokenCookie(res, token) {
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+}
+
 function authMiddleware(role) {
   return (req, res, next) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    const cookies = parseCookies(req);
+    const token = req.headers.authorization?.split(" ")[1] || cookies.token;
     if (!token) return res.status(401).json({ error: "No token provided" });
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
@@ -114,8 +132,9 @@ app.post("/api/users/register", async (req, res) => {
     const token = jwt.sign(
       { id: result.lastInsertRowid, email, name, role: "user" },
       JWT_SECRET,
-      { expiresIn: "24h" }
+      { expiresIn: "30d" }
     );
+    setTokenCookie(res, token);
     res.json({ token, user: { id: result.lastInsertRowid, name, email, role: "user" } });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -132,8 +151,9 @@ app.post("/api/users/login", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name, role: "user" },
       JWT_SECRET,
-      { expiresIn: "24h" }
+      { expiresIn: "30d" }
     );
+    setTokenCookie(res, token);
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: "user" } });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -176,8 +196,9 @@ app.post("/api/staff/login", async (req, res) => {
     const token = jwt.sign(
       { id: staff.id, email: staff.email, name: staff.name, role: "staff" },
       JWT_SECRET,
-      { expiresIn: "24h" }
+      { expiresIn: "30d" }
     );
+    setTokenCookie(res, token);
     res.json({ token, user: { id: staff.id, name: staff.name, email: staff.email, role: "staff" } });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -219,11 +240,29 @@ app.post("/api/owner/login", async (req, res) => {
     const token = jwt.sign(
       { id: 0, email: "owner@cafe.com", name: "Owner", role: "owner" },
       JWT_SECRET,
-      { expiresIn: "24h" }
+      { expiresIn: "30d" }
     );
+    setTokenCookie(res, token);
     res.json({ token, user: { id: 0, name: "Owner", email: "owner@cafe.com", role: "owner" } });
   } catch {
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ─── SESSION RESTORE ───
+
+app.get("/api/auth/me", (req, res) => {
+  const cookies = parseCookies(req);
+  const token = cookies.token;
+  if (!token) return res.json({ user: null });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    res.json({
+      user: { id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role },
+      token,
+    });
+  } catch {
+    res.json({ user: null });
   }
 });
 

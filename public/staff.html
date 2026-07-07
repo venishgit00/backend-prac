@@ -265,11 +265,23 @@ function switchTab(tab) {
 }
 
 // ─── INIT ───
-if (token && user) {
-  document.getElementById("userInfo").textContent = user.name + " (staff)";
-  loadDashboard();
-  showSection("dashboard");
-}
+(async () => {
+  try {
+    const res = await fetch("/api/auth/me");
+    const data = await res.json();
+    if (data.user && data.token && data.user.role === "staff") {
+      token = data.token;
+      user = data.user;
+      localStorage.setItem("staffToken", token);
+      localStorage.setItem("staffUser", JSON.stringify(user));
+    }
+  } catch {}
+  if (token && user) {
+    document.getElementById("userInfo").textContent = user.name + " (staff)";
+    loadDashboard();
+    showSection("dashboard");
+  }
+})();
 </script>
 </body>
 </html>

@@ -351,11 +351,23 @@ document.getElementById("addStaffForm").addEventListener("submit", async (e) => 
 });
 
 // ─── INIT ───
-if (token && user) {
-  document.getElementById("userInfo").textContent = "Owner";
-  loadDashboard();
-  showSection("dashboard");
-}
+(async () => {
+  try {
+    const res = await fetch("/api/auth/me");
+    const data = await res.json();
+    if (data.user && data.token && data.user.role === "owner") {
+      token = data.token;
+      user = data.user;
+      localStorage.setItem("ownerToken", token);
+      localStorage.setItem("ownerUser", JSON.stringify(user));
+    }
+  } catch {}
+  if (token && user) {
+    document.getElementById("userInfo").textContent = "Owner";
+    loadDashboard();
+    showSection("dashboard");
+  }
+})();
 </script>
 </body>
 </html>

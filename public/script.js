@@ -119,7 +119,18 @@ function switchAuthTab(tab) {
 }
 
 // ─── BOOKING ───
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const res = await fetch("/api/auth/me");
+    const data = await res.json();
+    if (data.user && data.token) {
+      token = data.token;
+      user = data.user;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  } catch {}
+  updateNav();
   const today = new Date().toISOString().split("T")[0];
   const dateInput = document.getElementById("bookingDate");
   if (dateInput) {
@@ -312,6 +323,6 @@ function resetAutoSlide() {
 document.addEventListener("DOMContentLoaded", initCarousel);
 
 // ─── INIT ───
-updateNav();
+// (session restored in DOMContentLoaded above)
 
 
