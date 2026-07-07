@@ -160,7 +160,15 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     localStorage.setItem("staffToken", token);
     localStorage.setItem("staffUser", JSON.stringify(user));
     document.getElementById("userInfo").textContent = user.name + " (staff)";
-    showApproval = data.showApproval;
+    if (data.showApproval) {
+      showMsg("loginMsg", "Owner has approved your request.", "success");
+      setTimeout(() => {
+        showApproval = true;
+        loadDashboard();
+        showSection("dashboard");
+      }, 2000);
+      return;
+    }
     loadDashboard();
     showSection("dashboard");
   } catch {

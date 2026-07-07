@@ -164,31 +164,38 @@ body {
 .msg {
     text-align: center;
     margin-top: 1rem;
-    padding: 0.5rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
     display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .msg.success {
     display: block;
-    background: rgba(39, 174, 96, 0.2);
-    color: #27ae60;
-    border: 1px solid #27ae60;
+    background: rgba(39, 174, 96, 0.15);
+    color: #2ecc71;
+    border: 1px solid rgba(39, 174, 96, 0.4);
 }
 
 .msg.error {
     display: block;
-    background: rgba(231, 76, 60, 0.2);
-    color: #e74c3c;
-    border: 1px solid #e74c3c;
+    background: rgba(231, 76, 60, 0.15);
+    color: #ff6b6b;
+    border: 1px solid rgba(231, 76, 60, 0.4);
 }
 
 .msg.info {
     display: block;
-    background: rgba(52, 152, 219, 0.2);
-    color: #3498db;
-    border: 1px solid #3498db;
+    background: rgba(52, 152, 219, 0.15);
+    color: #5dade2;
+    border: 1px solid rgba(52, 152, 219, 0.4);
 }
 
 .dashboard {
