@@ -373,10 +373,14 @@ app.post("/api/bookings/cancel", authMiddleware("user"), (req, res) => {
     if (booking.status !== "confirmed") return res.status(400).json({ error: "Booking is already cancelled" });
 
     const today = new Date().toISOString().split("T")[0];
-    if (booking.date === today) return res.status(400).json({ error: "Cannot cancel on the day of arrival" });
+    const isSameDay = booking.date === today;
 
     db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?").run(bookingId);
-    res.json({ message: "Booking cancelled" });
+    res.json({
+      message: isSameDay
+        ? "Booking cancelled. 20% refund will be processed (80% cancellation charge applies for same-day cancellations)."
+        : "Booking cancelled successfully.",
+    });
   } catch {
     res.status(500).json({ error: "Server error" });
   }

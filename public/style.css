@@ -619,10 +619,10 @@ body {
 .terms-note {
     margin: 1.5rem 0;
     padding: 0.8rem 1rem;
-    background: rgba(231, 76, 60, 0.1);
-    border: 1px solid rgba(231, 76, 60, 0.3);
+    background: rgba(241, 196, 15, 0.1);
+    border: 1px solid rgba(241, 196, 15, 0.3);
     border-radius: 8px;
-    color: #ff6b6b;
+    color: #f1c40f;
     font-size: 0.85rem;
     text-align: center;
 }

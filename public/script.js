@@ -258,7 +258,7 @@ async function loadMyBookings() {
     bookings.forEach((b) => {
       const card = document.createElement("div");
       card.className = "booking-card";
-      const canCancel = b.status === "confirmed" && b.date !== today;
+      const canCancel = b.status === "confirmed";
       card.innerHTML = `
         <div class="details">
           <span>${b.date}</span>
@@ -268,7 +268,7 @@ async function loadMyBookings() {
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="status ${b.status}">${b.status}</span>
-          ${canCancel ? `<button class="btn btn-danger btn-small" onclick="cancelBooking(${b.id})">Cancel</button>` : ""}
+          ${canCancel ? `<button class="btn btn-danger btn-small" onclick="cancelBooking(${b.id}, ${b.date === today ? 'true' : 'false'})">Cancel</button>` : ""}
         </div>
       `;
       list.appendChild(card);
@@ -278,8 +278,11 @@ async function loadMyBookings() {
   }
 }
 
-async function cancelBooking(bookingId) {
-  if (!confirm("Are you sure you want to cancel this booking?")) return;
+async function cancelBooking(bookingId, isSameDay) {
+  const msg = isSameDay
+    ? "Cancel this booking? A 80% cancellation charge applies (only 20% refund). Continue?"
+    : "Are you sure you want to cancel this booking?";
+  if (!confirm(msg)) return;
   try {
     const res = await fetch(API + "/api/bookings/cancel", {
       method: "POST",
@@ -288,7 +291,7 @@ async function cancelBooking(bookingId) {
     });
     const data = await res.json();
     if (!res.ok) return showMsg("bookingMsg", data.error, "error");
-    showMsg("bookingMsg", "Booking cancelled successfully.", "success");
+    showMsg("bookingMsg", data.message, "success");
     loadMyBookings();
   } catch {
     showMsg("bookingMsg", "Error cancelling booking", "error");
