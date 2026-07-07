@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "cafe-management-secret-key-2024";
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const DATA_DIR = path.join(__dirname, "data");
@@ -381,6 +381,72 @@ app.post("/api/bookings/cancel", authMiddleware("user"), (req, res) => {
         ? "Booking cancelled. 20% refund will be processed (80% cancellation charge applies for same-day cancellations)."
         : "Booking cancelled successfully.",
     });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ─── OFFERS MANAGEMENT ───
+
+const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
+const UPLOADS_DIR = path.join(__dirname, "public", "uploads");
+if (!require("fs").existsSync(UPLOADS_DIR)) require("fs").mkdirSync(UPLOADS_DIR, { recursive: true });
+
+function loadOffers() {
+  try { return JSON.parse(require("fs").readFileSync(OFFERS_FILE, "utf8")); } catch { return { offers: [] }; }
+}
+
+function saveOffers(data) {
+  require("fs").writeFileSync(OFFERS_FILE, JSON.stringify(data));
+}
+
+app.get("/api/offers", (req, res) => {
+  res.json(loadOffers());
+});
+
+app.post("/api/offers/update", authMiddleware("owner"), (req, res) => {
+  try {
+    const { slot, image, label } = req.body;
+    const data = loadOffers();
+    const offer = data.offers.find((o) => o.slot === slot);
+    if (!offer) return res.status(404).json({ error: "Offer slot not found" });
+
+    if (label !== undefined) offer.label = label;
+
+    if (image) {
+      const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!matches) return res.status(400).json({ error: "Invalid image data" });
+      const ext = matches[1] === "jpeg" ? "jpg" : matches[1];
+      const buffer = Buffer.from(matches[2], "base64");
+      const filename = `offer-${slot}.${ext}`;
+      require("fs").writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+      if (offer.image && offer.image !== `/uploads/${filename}`) {
+        const oldPath = path.join(__dirname, "public", offer.image);
+        try { require("fs").unlinkSync(oldPath); } catch {}
+      }
+      offer.image = `/uploads/${filename}`;
+    }
+
+    saveOffers(data);
+    res.json({ message: "Offer updated", offers: data.offers });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/api/offers/remove-image", authMiddleware("owner"), (req, res) => {
+  try {
+    const { slot } = req.body;
+    const data = loadOffers();
+    const offer = data.offers.find((o) => o.slot === slot);
+    if (!offer) return res.status(404).json({ error: "Offer slot not found" });
+    if (offer.image) {
+      const oldPath = path.join(__dirname, "public", offer.image);
+      try { require("fs").unlinkSync(oldPath); } catch {}
+    }
+    offer.image = null;
+    saveOffers(data);
+    res.json({ message: "Image removed", offers: data.offers });
   } catch {
     res.status(500).json({ error: "Server error" });
   }

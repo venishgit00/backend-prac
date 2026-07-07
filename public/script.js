@@ -304,6 +304,31 @@ let slideInterval;
 const track = document.getElementById("carouselTrack");
 const dotsContainer = document.getElementById("carouselDots");
 
+async function loadOffers() {
+  if (!track) return;
+  try {
+    const res = await fetch("/api/offers");
+    const data = await res.json();
+    const slides = track.querySelectorAll(".carousel-slide");
+    data.offers.forEach((offer) => {
+      const slide = track.querySelector(`[data-slot="${offer.slot}"]`);
+      if (!slide) return;
+      const img = slide.querySelector(".offer-img");
+      const placeholder = slide.querySelector(".offer-placeholder");
+      const label = slide.querySelector(".offer-label");
+      if (offer.image) {
+        img.src = offer.image;
+        img.style.display = "block";
+        placeholder.style.display = "none";
+      } else {
+        img.style.display = "none";
+        placeholder.style.display = "flex";
+      }
+      if (label) label.textContent = offer.label;
+    });
+  } catch {}
+}
+
 function initCarousel() {
   if (!track) return;
   const slides = track.querySelectorAll(".carousel-slide");
@@ -312,6 +337,7 @@ function initCarousel() {
     dot.onclick = () => goToSlide(i);
     dotsContainer.appendChild(dot);
   });
+  loadOffers();
   goToSlide(0);
   startAutoSlide();
 }

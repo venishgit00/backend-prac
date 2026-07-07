@@ -366,3 +366,88 @@ body {
         padding: 0.8rem;
     }
 }
+
+/* ─── OFFERS MANAGEMENT ─── */
+.offers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.offer-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(201, 169, 110, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.offer-preview {
+    width: 100%;
+    height: 180px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.offer-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.offer-no-image {
+    color: #a0a0b0;
+    font-size: 0.85rem;
+}
+
+.offer-fields {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.offer-fields label {
+    color: #c9a96e;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.offer-fields input[type="text"] {
+    width: 100%;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(201, 169, 110, 0.3);
+    border-radius: 6px;
+    color: #e8e8e8;
+    font-size: 0.9rem;
+}
+
+.offer-fields input[type="file"] {
+    color: #a0a0b0;
+    font-size: 0.8rem;
+}
+
+.offer-fields input[type="file"]::file-selector-button {
+    padding: 0.3rem 0.6rem;
+    background: #c9a96e;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.offer-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.3rem;
+}
+
+.offer-actions .btn-small {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.7rem;
+}

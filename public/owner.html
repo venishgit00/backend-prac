@@ -59,6 +59,7 @@
                 <button class="tab-btn" onclick="switchTab('pending')">Pending Staff</button>
                 <button class="tab-btn" onclick="switchTab('staff')">Manage Staff</button>
                 <button class="tab-btn" onclick="switchTab('add')">Add Staff</button>
+                <button class="tab-btn" onclick="switchTab('offers')">Offers</button>
             </div>
             <div id="tabUsers" class="tab-content active">
                 <h3>All Users</h3>
@@ -98,6 +99,13 @@
                     <button type="submit" class="btn btn-primary">Add Staff</button>
                 </form>
                 <div id="addStaffMsg" class="msg"></div>
+            </div>
+
+            <!-- ─── OFFERS TAB ─── -->
+            <div id="tabOffers" class="tab-content">
+                <h3>Manage Offers Carousel</h3>
+                <div id="offersList" class="offers-grid"></div>
+                <div id="offersMsg" class="msg"></div>
             </div>
         </div>
     </section>
@@ -278,6 +286,7 @@ async function loadDashboard() {
       html += "</tbody></table>";
       staffList.innerHTML = html;
     }
+    loadOffersManager();
   } catch (err) {
     if (err.message === "Auth failed") {
       logout();
@@ -318,7 +327,7 @@ function switchTab(tab) {
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
   const btns = document.querySelectorAll(".tab-btn");
-  const tabs = ["users", "bookings", "pending", "staff", "add"];
+  const tabs = ["users", "bookings", "pending", "staff", "add", "offers"];
   const idx = tabs.indexOf(tab);
   if (idx >= 0) {
     btns[idx].classList.add("active");
@@ -349,6 +358,93 @@ document.getElementById("addStaffForm").addEventListener("submit", async (e) => 
     showMsg("addStaffMsg", "Connection error", "error");
   }
 });
+
+// ─── OFFERS MANAGEMENT ───
+
+function showOffersMsg(text, type) {
+  const el = document.getElementById("offersMsg");
+  el.textContent = text;
+  el.className = "msg " + type;
+}
+
+async function loadOffersManager() {
+  try {
+    const res = await fetch("/api/offers");
+    const data = await res.json();
+    const container = document.getElementById("offersList");
+    container.innerHTML = "";
+    data.offers.forEach((offer) => {
+      const card = document.createElement("div");
+      card.className = "offer-card";
+      card.innerHTML = `
+        <div class="offer-preview">
+          ${offer.image ? `<img src="${offer.image}" alt="Offer ${offer.slot + 1}">` : '<div class="offer-no-image">No image</div>'}
+        </div>
+        <div class="offer-fields">
+          <label>Label</label>
+          <input type="text" class="offer-label-input" value="${offer.label}" data-slot="${offer.slot}">
+          <label>Image</label>
+          <input type="file" class="offer-file-input" accept="image/*" data-slot="${offer.slot}">
+          <div class="offer-actions">
+            <button class="btn btn-primary btn-small" onclick="saveOffer(${offer.slot})">Save</button>
+            ${offer.image ? `<button class="btn btn-danger btn-small" onclick="removeOfferImage(${offer.slot})">Remove Image</button>` : ""}
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  } catch {
+    showOffersMsg("Error loading offers", "error");
+  }
+}
+
+async function saveOffer(slot) {
+  const card = document.querySelector(`.offer-card:nth-child(${slot + 1})`);
+  const labelInput = card.querySelector(".offer-label-input");
+  const fileInput = card.querySelector(".offer-file-input");
+  const body = { slot, label: labelInput.value };
+  if (fileInput.files[0]) {
+    body.image = await toBase64(fileInput.files[0]);
+  }
+  try {
+    const res = await fetch("/api/offers/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) return showOffersMsg(data.error, "error");
+    showOffersMsg("Offer saved!", "success");
+    loadOffersManager();
+  } catch {
+    showOffersMsg("Error saving offer", "error");
+  }
+}
+
+async function removeOfferImage(slot) {
+  try {
+    const res = await fetch("/api/offers/remove-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ slot }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showOffersMsg(data.error, "error");
+    showOffersMsg("Image removed", "success");
+    loadOffersManager();
+  } catch {
+    showOffersMsg("Error removing image", "error");
+  }
+}
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 // ─── INIT ───
 (async () => {
