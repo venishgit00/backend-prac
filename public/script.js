@@ -254,9 +254,11 @@ async function loadMyBookings() {
       return;
     }
     list.innerHTML = "";
+    const today = new Date().toISOString().split("T")[0];
     bookings.forEach((b) => {
       const card = document.createElement("div");
       card.className = "booking-card";
+      const canCancel = b.status === "confirmed" && b.date !== today;
       card.innerHTML = `
         <div class="details">
           <span>${b.date}</span>
@@ -264,12 +266,32 @@ async function loadMyBookings() {
           <span>${b.guests} guest${b.guests > 1 ? "s" : ""}</span>
           <span>${b.tableLabel || "Table " + b.tableId}</span>
         </div>
-        <span class="status ${b.status}">${b.status}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="status ${b.status}">${b.status}</span>
+          ${canCancel ? `<button class="btn btn-danger btn-small" onclick="cancelBooking(${b.id})">Cancel</button>` : ""}
+        </div>
       `;
       list.appendChild(card);
     });
   } catch {
     // silent
+  }
+}
+
+async function cancelBooking(bookingId) {
+  if (!confirm("Are you sure you want to cancel this booking?")) return;
+  try {
+    const res = await fetch(API + "/api/bookings/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ bookingId }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showMsg("bookingMsg", data.error, "error");
+    showMsg("bookingMsg", "Booking cancelled successfully.", "success");
+    loadMyBookings();
+  } catch {
+    showMsg("bookingMsg", "Error cancelling booking", "error");
   }
 }
 

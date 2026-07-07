@@ -365,6 +365,23 @@ app.get("/api/bookings/my", authMiddleware("user"), (req, res) => {
   res.json(rows);
 });
 
+app.post("/api/bookings/cancel", authMiddleware("user"), (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    const booking = db.prepare("SELECT * FROM bookings WHERE id = ? AND userId = ?").get(bookingId, req.user.id);
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+    if (booking.status !== "confirmed") return res.status(400).json({ error: "Booking is already cancelled" });
+
+    const today = new Date().toISOString().split("T")[0];
+    if (booking.date === today) return res.status(400).json({ error: "Cannot cancel on the day of arrival" });
+
+    db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?").run(bookingId);
+    res.json({ message: "Booking cancelled" });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── STAFF DASHBOARD ───
 
 app.get("/api/users/all", authMiddleware("staff"), (req, res) => {

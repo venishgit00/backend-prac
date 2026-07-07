@@ -616,6 +616,17 @@ body {
     margin: 1rem auto 0;
 }
 
+.terms-note {
+    margin: 1.5rem 0;
+    padding: 0.8rem 1rem;
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    border-radius: 8px;
+    color: #ff6b6b;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
 #myBookings {
     margin-top: 1.5rem;
 }
@@ -655,6 +666,11 @@ body {
 .booking-card .status.confirmed {
     background: rgba(39, 174, 96, 0.2);
     color: #27ae60;
+}
+
+.booking-card .status.cancelled {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
 }
 
 /* ─── DASHBOARD ─── */
