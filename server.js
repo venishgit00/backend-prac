@@ -36,6 +36,7 @@ function initDB() {
       phone TEXT DEFAULT '',
       status TEXT DEFAULT 'pending',
       addedBy INTEGER DEFAULT NULL,
+      notified INTEGER DEFAULT 1,
       createdAt TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS bookings (
@@ -76,6 +77,8 @@ function initDB() {
 }
 
 initDB();
+
+try { db.exec("ALTER TABLE staff ADD COLUMN notified INTEGER DEFAULT 1"); } catch {} // migration
 
 // ─── HELPERS ───
 function parseCookies(req) {
@@ -191,7 +194,12 @@ app.post("/api/staff/login", async (req, res) => {
     if (staff.status === "pending")
       return res.status(403).json({ error: "Your account is pending owner approval", pending: true });
     if (staff.status === "rejected")
-      return res.status(403).json({ error: "Your account was rejected by owner" });
+      return res.status(403).json({ error: "Owner has rejected your request." });
+
+    const showApproval = staff.notified === 0;
+    if (staff.notified === 0) {
+      db.prepare("UPDATE staff SET notified = 1 WHERE id = ?").run(staff.id);
+    }
 
     const token = jwt.sign(
       { id: staff.id, email: staff.email, name: staff.name, role: "staff" },
@@ -199,7 +207,11 @@ app.post("/api/staff/login", async (req, res) => {
       { expiresIn: "30d" }
     );
     setTokenCookie(res, token);
-    res.json({ token, user: { id: staff.id, name: staff.name, email: staff.email, role: "staff" } });
+    res.json({
+      token,
+      user: { id: staff.id, name: staff.name, email: staff.email, role: "staff" },
+      showApproval,
+    });
   } catch {
     res.status(500).json({ error: "Server error" });
   }
@@ -281,7 +293,7 @@ app.get("/api/staff/all", authMiddleware("owner"), (req, res) => {
 app.post("/api/staff/approve", authMiddleware("owner"), (req, res) => {
   try {
     const { staffId } = req.body;
-    const result = db.prepare("UPDATE staff SET status = 'approved' WHERE id = ?").run(staffId);
+    const result = db.prepare("UPDATE staff SET status = 'approved', notified = 0 WHERE id = ?").run(staffId);
     if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
     const staff = db.prepare("SELECT id, name, email, status FROM staff WHERE id = ?").get(staffId);
     res.json({ message: "Staff approved", staff });

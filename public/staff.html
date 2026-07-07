@@ -70,6 +70,7 @@
         <div class="dashboard">
             <div class="dashboard-header">
                 <h2>Staff Dashboard</h2>
+                <div id="approvalMsg" class="msg success" style="display:none;">Owner has approved your request.</div>
             </div>
             <div class="dashboard-tabs">
                 <button class="tab-btn active" onclick="switchTab('users')">Registered Users</button>
@@ -92,6 +93,7 @@
 const API = "";
 let token = localStorage.getItem("staffToken");
 let user = JSON.parse(localStorage.getItem("staffUser") || "null");
+let showApproval = false;
 
 function showSection(id) {
   document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
@@ -147,9 +149,9 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     const data = await res.json();
     if (!res.ok) {
       if (data.pending) {
-        showMsg("loginMsg", "Your account is pending owner approval.", "info");
+        showMsg("loginMsg", "Your request is pending. Waiting for owner approval.", "info");
       } else {
-        showMsg("loginMsg", data.error, "error");
+        showMsg("loginMsg", "Owner has rejected your request.", "error");
       }
       return;
     }
@@ -158,6 +160,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     localStorage.setItem("staffToken", token);
     localStorage.setItem("staffUser", JSON.stringify(user));
     document.getElementById("userInfo").textContent = user.name + " (staff)";
+    showApproval = data.showApproval;
     loadDashboard();
     showSection("dashboard");
   } catch {
@@ -194,6 +197,15 @@ document.getElementById("staffRequestForm").addEventListener("submit", async (e)
 
 // ─── DASHBOARD ───
 async function loadDashboard() {
+  const approvalEl = document.getElementById("approvalMsg");
+  if (approvalEl) {
+    if (showApproval) {
+      approvalEl.style.display = "flex";
+      setTimeout(() => { approvalEl.style.display = "none"; }, 5000);
+    } else {
+      approvalEl.style.display = "none";
+    }
+  }
   try {
     const [usersRes, bookingsRes] = await Promise.all([
       fetch(API + "/api/users/all", { headers: { Authorization: "Bearer " + token } }),
