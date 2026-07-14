@@ -131,17 +131,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       user = data.user;
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-    } else {
+    } else if (!token) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       token = null;
       user = null;
     }
   } catch {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    token = null;
-    user = null;
+    if (!token) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      token = null;
+      user = null;
+    }
   }
   updateNav();
   const today = new Date().toISOString().split("T")[0];
