@@ -122,7 +122,9 @@ function switchAuthTab(tab) {
 // ─── BOOKING ───
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    const res = await fetch("/api/auth/me");
+    const res = await fetch("/api/auth/me", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    });
     const data = await res.json();
     if (data.user && data.token) {
       token = data.token;
@@ -385,9 +387,11 @@ function resetAutoSlide() {
 document.addEventListener("DOMContentLoaded", initCarousel);
 
 document.addEventListener("visibilitychange", async () => {
-  if (document.visible && token && user) {
+  if (document.visibilityState === "visible" && token && user) {
     try {
-      const res = await fetch("/api/auth/me");
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: "Bearer " + token },
+      });
       const data = await res.json();
       if (!data.user) logout();
     } catch { logout(); }

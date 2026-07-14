@@ -292,7 +292,7 @@ app.post("/api/owner/login", async (req, res) => {
 
 app.get("/api/auth/me", (req, res) => {
   const cookies = parseCookies(req);
-  const token = cookies.token;
+  const token = req.headers.authorization?.split(" ")[1] || cookies.token;
   if (!token) return res.json({ user: null });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);

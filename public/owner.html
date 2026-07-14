@@ -330,7 +330,9 @@ async function rejectStaff(id) {
 
 async function switchTab(tab) {
   try {
-    const res = await fetch("/api/auth/me");
+    const res = await fetch("/api/auth/me", {
+      headers: { Authorization: "Bearer " + token },
+    });
     const data = await res.json();
     if (!data.user || data.user.role !== "owner") return logout();
   } catch { return logout(); }
@@ -495,7 +497,9 @@ function toBase64(file) {
 // ─── INIT ───
 (async () => {
   try {
-    const res = await fetch("/api/auth/me");
+    const res = await fetch("/api/auth/me", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    });
     const data = await res.json();
     if (data.user && data.token && data.user.role === "owner") {
       token = data.token;
@@ -521,9 +525,11 @@ function toBase64(file) {
   }
 })();
 document.addEventListener("visibilitychange", async () => {
-  if (document.visible && token && user) {
+  if (document.visibilityState === "visible" && token && user) {
     try {
-      const res = await fetch("/api/auth/me");
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: "Bearer " + token },
+      });
       const data = await res.json();
       if (!data.user || data.user.role !== "owner") logout();
     } catch { logout(); }
