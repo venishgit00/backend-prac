@@ -273,6 +273,9 @@ async function loadDashboard() {
     if (err.message === "Auth failed") {
       logout();
       showMsg("loginMsg", "Session expired. Please login again.", "error");
+    } else {
+      console.error("loadDashboard error:", err);
+      document.getElementById("usersList").innerHTML = "<p class='empty' style='color:red'>Error: " + err.message + "</p>";
     }
   }
 }
