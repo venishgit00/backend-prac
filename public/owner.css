@@ -381,25 +381,58 @@ body {
     overflow: hidden;
 }
 
-.offer-preview {
+/* ─── DRAG & DROP ZONE ─── */
+.drop-zone {
     width: 100%;
     height: 180px;
-    background: rgba(0, 0, 0, 0.3);
+    border: 2px dashed rgba(201, 169, 110, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(0, 0, 0, 0.2);
     overflow: hidden;
 }
 
-.offer-preview img {
+.drop-zone:hover {
+    border-color: #c9a96e;
+    background: rgba(201, 169, 110, 0.05);
+}
+
+.drop-zone.drag-over {
+    border-color: #c9a96e;
+    background: rgba(201, 169, 110, 0.15);
+    transform: scale(1.02);
+}
+
+.drop-zone-content {
+    text-align: center;
+    pointer-events: none;
+}
+
+.drop-zone-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.6;
+}
+
+.drop-zone-text {
+    color: #a0a0b0;
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+}
+
+.drop-zone-hint {
+    color: rgba(160, 160, 176, 0.6);
+    font-size: 0.75rem;
+}
+
+.drop-zone-preview {
     width: 100%;
     height: 100%;
     object-fit: cover;
-}
-
-.offer-no-image {
-    color: #a0a0b0;
-    font-size: 0.85rem;
+    pointer-events: none;
 }
 
 .offer-fields {
@@ -423,22 +456,6 @@ body {
     border-radius: 6px;
     color: #e8e8e8;
     font-size: 0.9rem;
-}
-
-.offer-fields input[type="file"] {
-    color: #a0a0b0;
-    font-size: 0.8rem;
-}
-
-.offer-fields input[type="file"]::file-selector-button {
-    padding: 0.3rem 0.6rem;
-    background: #c9a96e;
-    color: #1a1a2e;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.75rem;
 }
 
 .offer-actions {

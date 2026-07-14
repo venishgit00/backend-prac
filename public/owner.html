@@ -377,14 +377,20 @@ async function loadOffersManager() {
       const card = document.createElement("div");
       card.className = "offer-card";
       card.innerHTML = `
-        <div class="offer-preview">
-          ${offer.image ? `<img src="${offer.image}" alt="Offer ${offer.slot + 1}">` : '<div class="offer-no-image">No image</div>'}
+        <div class="drop-zone" data-slot="${offer.slot}">
+          <input type="file" class="offer-file-input" accept="image/*" hidden>
+          ${offer.image
+            ? `<img src="${offer.image}" class="drop-zone-preview" alt="Offer ${offer.slot + 1}">`
+            : `<div class="drop-zone-content">
+                <div class="drop-zone-icon">&#128193;</div>
+                <div class="drop-zone-text">Drag &amp; drop an image here</div>
+                <div class="drop-zone-hint">or click to browse</div>
+              </div>`
+          }
         </div>
         <div class="offer-fields">
           <label>Label</label>
           <input type="text" class="offer-label-input" value="${offer.label}" data-slot="${offer.slot}">
-          <label>Image</label>
-          <input type="file" class="offer-file-input" accept="image/*" data-slot="${offer.slot}">
           <div class="offer-actions">
             <button class="btn btn-primary btn-small" onclick="saveOffer(${offer.slot})">Save</button>
             ${offer.image ? `<button class="btn btn-danger btn-small" onclick="removeOfferImage(${offer.slot})">Remove Image</button>` : ""}
@@ -393,9 +399,39 @@ async function loadOffersManager() {
       `;
       container.appendChild(card);
     });
+    document.querySelectorAll(".drop-zone").forEach(setupDropZone);
   } catch {
     showOffersMsg("Error loading offers", "error");
   }
+}
+
+function setupDropZone(zone) {
+  const fileInput = zone.querySelector(".offer-file-input");
+  zone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) showDropZonePreview(zone, fileInput.files[0]);
+  });
+  ["dragenter", "dragover"].forEach((evt) => {
+    zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.add("drag-over"); });
+  });
+  ["dragleave", "drop"].forEach((evt) => {
+    zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.remove("drag-over"); });
+  });
+  zone.addEventListener("drop", (e) => {
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      fileInput.files = e.dataTransfer.files;
+      showDropZonePreview(zone, file);
+    }
+  });
+}
+
+function showDropZonePreview(zone, file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    zone.innerHTML = `<img src="${e.target.result}" class="drop-zone-preview" alt="Preview">`;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function saveOffer(slot) {
