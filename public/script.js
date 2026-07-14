@@ -31,7 +31,8 @@ function updateNav() {
   navLinks.innerHTML = links;
 }
 
-function logout() {
+async function logout() {
+  try { await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch {}
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   token = null;
@@ -128,8 +129,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       user = data.user;
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      token = null;
+      user = null;
     }
-  } catch {}
+  } catch {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    token = null;
+    user = null;
+  }
   updateNav();
   const today = new Date().toISOString().split("T")[0];
   const dateInput = document.getElementById("bookingDate");
@@ -374,6 +385,5 @@ function resetAutoSlide() {
 document.addEventListener("DOMContentLoaded", initCarousel);
 
 // ─── INIT ───
-// (session restored in DOMContentLoaded above)
 
 

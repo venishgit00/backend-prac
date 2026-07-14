@@ -85,6 +85,16 @@ function initDB() {
 initDB();
 
 try { db.exec("ALTER TABLE staff ADD COLUMN notified INTEGER DEFAULT 1"); } catch {} // migration
+try { db.exec("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE staff ADD COLUMN token_version INTEGER DEFAULT 0"); } catch {}
+
+const SETTINGS_FILE = path.join(DATA_DIR, "admin-settings.json");
+function loadOwnerSettings() {
+  try { return JSON.parse(require("fs").readFileSync(SETTINGS_FILE, "utf8")); } catch { return { ownerTokenVersion: 0 }; }
+}
+function saveOwnerSettings(s) {
+  require("fs").writeFileSync(SETTINGS_FILE, JSON.stringify(s));
+}
 
 // ─── HELPERS ───
 function parseCookies(req) {
@@ -104,6 +114,13 @@ function setTokenCookie(res, token) {
   });
 }
 
+function getCurrentTokenVersion(role, id) {
+  if (role === "owner") return loadOwnerSettings().ownerTokenVersion;
+  const table = role === "user" ? "users" : "staff";
+  const row = db.prepare(`SELECT token_version FROM ${table} WHERE id = ?`).get(id);
+  return row ? row.token_version : 0;
+}
+
 function authMiddleware(role) {
   return (req, res, next) => {
     const cookies = parseCookies(req);
@@ -113,6 +130,9 @@ function authMiddleware(role) {
       const decoded = jwt.verify(token, JWT_SECRET);
       if (role && decoded.role !== role && decoded.role !== "owner")
         return res.status(403).json({ error: "Access denied" });
+      const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
+      if ((decoded.token_version || 0) !== currentVersion)
+        return res.status(401).json({ error: "Session expired, please login again" });
       req.user = decoded;
       next();
     } catch {
@@ -139,7 +159,7 @@ app.post("/api/users/register", async (req, res) => {
     ).run(name, email, hashed, phone || "", createdAt);
 
     const token = jwt.sign(
-      { id: result.lastInsertRowid, email, name, role: "user" },
+      { id: result.lastInsertRowid, email, name, role: "user", token_version: 0 },
       JWT_SECRET,
       { expiresIn: "30d" }
     );
@@ -158,7 +178,7 @@ app.post("/api/users/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, name: user.name, role: "user" },
+      { id: user.id, email: user.email, name: user.name, role: "user", token_version: user.token_version },
       JWT_SECRET,
       { expiresIn: "30d" }
     );
@@ -208,7 +228,7 @@ app.post("/api/staff/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: staff.id, email: staff.email, name: staff.name, role: "staff" },
+      { id: staff.id, email: staff.email, name: staff.name, role: "staff", token_version: staff.token_version },
       JWT_SECRET,
       { expiresIn: "30d" }
     );
@@ -255,8 +275,9 @@ app.post("/api/owner/login", async (req, res) => {
     if (password !== "owner123")
       return res.status(401).json({ error: "Invalid credentials" });
 
+    const currentVersion = loadOwnerSettings().ownerTokenVersion;
     const token = jwt.sign(
-      { id: 0, email: "owner@cafe.com", name: "Owner", role: "owner" },
+      { id: 0, email: "owner@cafe.com", name: "Owner", role: "owner", token_version: currentVersion },
       JWT_SECRET,
       { expiresIn: "30d" }
     );
@@ -275,12 +296,38 @@ app.get("/api/auth/me", (req, res) => {
   if (!token) return res.json({ user: null });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
+    if ((decoded.token_version || 0) !== currentVersion)
+      return res.json({ user: null });
     res.json({
       user: { id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role },
       token,
     });
   } catch {
     res.json({ user: null });
+  }
+});
+
+// ─── LOGOUT (invalidates all sessions for this user) ───
+
+app.post("/api/logout", (req, res) => {
+  const cookies = parseCookies(req);
+  const token = req.headers.authorization?.split(" ")[1] || cookies.token;
+  if (!token) return res.status(401).json({ error: "No token provided" });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role === "owner") {
+      const s = loadOwnerSettings();
+      s.ownerTokenVersion++;
+      saveOwnerSettings(s);
+    } else {
+      const table = decoded.role === "user" ? "users" : "staff";
+      db.prepare(`UPDATE ${table} SET token_version = token_version + 1 WHERE id = ?`).run(decoded.id);
+    }
+    res.clearCookie("token");
+    res.json({ message: "Logged out successfully" });
+  } catch {
+    res.status(401).json({ error: "Invalid token" });
   }
 });
 

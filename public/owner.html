@@ -133,7 +133,8 @@ function clearMsg(elId) {
   document.getElementById(elId).className = "msg";
 }
 
-function logout() {
+async function logout() {
+  try { await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch {}
   localStorage.removeItem("ownerToken");
   localStorage.removeItem("ownerUser");
   token = null;
@@ -191,7 +192,7 @@ async function loadDashboard() {
       fetch(API + "/api/staff/pending", { headers: { Authorization: "Bearer " + token } }),
       fetch(API + "/api/staff/all", { headers: { Authorization: "Bearer " + token } }),
     ]);
-    if (!usersRes.ok) throw new Error("Auth failed");
+    if (!usersRes.ok || !bookingsRes.ok || !pendingRes.ok || !staffRes.ok) throw new Error("Auth failed");
 
     const users = await usersRes.json();
     const bookings = await bookingsRes.json();
@@ -492,8 +493,18 @@ function toBase64(file) {
       user = data.user;
       localStorage.setItem("ownerToken", token);
       localStorage.setItem("ownerUser", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("ownerToken");
+      localStorage.removeItem("ownerUser");
+      token = null;
+      user = null;
     }
-  } catch {}
+  } catch {
+    localStorage.removeItem("ownerToken");
+    localStorage.removeItem("ownerUser");
+    token = null;
+    user = null;
+  }
   if (token && user) {
     document.getElementById("userInfo").textContent = "Owner";
     loadDashboard();

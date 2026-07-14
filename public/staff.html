@@ -111,7 +111,8 @@ function clearMsg(elId) {
   document.getElementById(elId).className = "msg";
 }
 
-function logout() {
+async function logout() {
+  try { await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch {}
   localStorage.removeItem("staffToken");
   localStorage.removeItem("staffUser");
   token = null;
@@ -294,8 +295,18 @@ function switchTab(tab) {
       user = data.user;
       localStorage.setItem("staffToken", token);
       localStorage.setItem("staffUser", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("staffToken");
+      localStorage.removeItem("staffUser");
+      token = null;
+      user = null;
     }
-  } catch {}
+  } catch {
+    localStorage.removeItem("staffToken");
+    localStorage.removeItem("staffUser");
+    token = null;
+    user = null;
+  }
   if (token && user) {
     document.getElementById("userInfo").textContent = user.name + " (staff)";
     loadDashboard();
