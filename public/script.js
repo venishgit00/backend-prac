@@ -384,6 +384,16 @@ function resetAutoSlide() {
 
 document.addEventListener("DOMContentLoaded", initCarousel);
 
+document.addEventListener("visibilitychange", async () => {
+  if (document.visible && token && user) {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (!data.user) logout();
+    } catch { logout(); }
+  }
+});
+
 // ─── INIT ───
 
 

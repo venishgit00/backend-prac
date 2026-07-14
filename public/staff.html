@@ -115,6 +115,10 @@ async function logout() {
   try { await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch {}
   localStorage.removeItem("staffToken");
   localStorage.removeItem("staffUser");
+  ["usersList", "bookingsList"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = "";
+  });
   token = null;
   user = null;
   showSection("login");
@@ -273,7 +277,12 @@ async function loadDashboard() {
   }
 }
 
-function switchTab(tab) {
+async function switchTab(tab) {
+  try {
+    const res = await fetch("/api/auth/me");
+    const data = await res.json();
+    if (!data.user || data.user.role !== "staff") return logout();
+  } catch { return logout(); }
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
   if (tab === "users") {
@@ -313,6 +322,15 @@ function switchTab(tab) {
     showSection("dashboard");
   }
 })();
+document.addEventListener("visibilitychange", async () => {
+  if (document.visible && token && user) {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (!data.user || data.user.role !== "staff") logout();
+    } catch { logout(); }
+  }
+});
 </script>
 </body>
 </html>
