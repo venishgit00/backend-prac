@@ -391,66 +391,44 @@ async function loadOffersManager() {
     data.offers.forEach((offer) => {
       const card = document.createElement("div");
       card.className = "offer-card";
+      const imgSrc = offer.image || "";
       card.innerHTML = `
-        <div class="drop-zone" data-slot="${offer.slot}">
-          <input type="file" class="offer-file-input" accept="image/*" hidden>
-          ${offer.image
-            ? `<img src="${offer.image}" class="drop-zone-preview" alt="Offer ${offer.slot + 1}">`
-            : `<div class="drop-zone-content">
-                <div class="drop-zone-icon">&#128193;</div>
-                <div class="drop-zone-text">Drag &amp; drop an image here</div>
-                <div class="drop-zone-hint">or click to browse</div>
-              </div>`
-          }
+        <div class="offer-img-area">
+          ${imgSrc ? `<img src="${imgSrc}" class="offer-current-img">` : `<div class="offer-no-img">No image</div>`}
         </div>
         <div class="offer-fields">
           <label>Label</label>
-          <input type="text" class="offer-label-input" value="${offer.label}" data-slot="${offer.slot}">
+          <input type="text" class="offer-label-input" value="${offer.label}">
+          <div class="offer-upload-row">
+            <input type="file" class="offer-file-input" accept="image/*" data-slot="${offer.slot}">
+            <button class="btn btn-small btn-primary" onclick="document.querySelector('.offer-file-input[data-slot=&quot;${offer.slot}&quot;]').click()">Choose Image</button>
+          </div>
           <div class="offer-actions">
             <button class="btn btn-primary btn-small" onclick="saveOffer(${offer.slot})">Save</button>
-            ${offer.image ? `<button class="btn btn-danger btn-small" onclick="removeOfferImage(${offer.slot})">Remove Image</button>` : ""}
+            ${imgSrc ? `<button class="btn btn-danger btn-small" onclick="removeOfferImage(${offer.slot})">Remove Image</button>` : ""}
           </div>
         </div>
       `;
       container.appendChild(card);
+      const fileInput = card.querySelector(".offer-file-input");
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files[0]) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            card.querySelector(".offer-img-area").innerHTML = `<img src="${e.target.result}" class="offer-current-img">`;
+          };
+          reader.readAsDataURL(fileInput.files[0]);
+        }
+      });
     });
-    document.querySelectorAll(".drop-zone").forEach(setupDropZone);
   } catch {
     showOffersMsg("Error loading offers", "error");
   }
 }
 
-function setupDropZone(zone) {
-  const fileInput = zone.querySelector(".offer-file-input");
-  zone.addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", () => {
-    if (fileInput.files[0]) showDropZonePreview(zone, fileInput.files[0]);
-  });
-  ["dragenter", "dragover"].forEach((evt) => {
-    zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.add("drag-over"); });
-  });
-  ["dragleave", "drop"].forEach((evt) => {
-    zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.remove("drag-over"); });
-  });
-  zone.addEventListener("drop", (e) => {
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      fileInput.files = e.dataTransfer.files;
-      showDropZonePreview(zone, file);
-    }
-  });
-}
-
-function showDropZonePreview(zone, file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    zone.innerHTML = `<img src="${e.target.result}" class="drop-zone-preview" alt="Preview">`;
-  };
-  reader.readAsDataURL(file);
-}
-
 async function saveOffer(slot) {
-  const card = document.querySelector(`.offer-card:nth-child(${slot + 1})`);
+  const cards = document.querySelectorAll(".offer-card");
+  const card = cards[slot];
   const labelInput = card.querySelector(".offer-label-input");
   const fileInput = card.querySelector(".offer-file-input");
   const body = { slot, label: labelInput.value };
