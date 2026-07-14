@@ -397,6 +397,17 @@ document.addEventListener("visibilitychange", async () => {
     } catch { logout(); }
   }
 });
+setInterval(async () => {
+  if (token && user) {
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await res.json();
+      if (!data.user) logout();
+    } catch { logout(); }
+  }
+}, 30000);
 
 // ─── INIT ───
 

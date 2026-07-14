@@ -346,7 +346,7 @@ app.get("/api/staff/all", authMiddleware("owner"), (req, res) => {
 app.post("/api/staff/approve", authMiddleware("owner"), (req, res) => {
   try {
     const { staffId } = req.body;
-    const result = db.prepare("UPDATE staff SET status = 'approved', notified = 0 WHERE id = ?").run(staffId);
+    const result = db.prepare("UPDATE staff SET status = 'approved', notified = 0, token_version = token_version + 1 WHERE id = ?").run(staffId);
     if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
     const staff = db.prepare("SELECT id, name, email, status FROM staff WHERE id = ?").get(staffId);
     res.json({ message: "Staff approved", staff });
@@ -358,7 +358,7 @@ app.post("/api/staff/approve", authMiddleware("owner"), (req, res) => {
 app.post("/api/staff/reject", authMiddleware("owner"), (req, res) => {
   try {
     const { staffId } = req.body;
-    const result = db.prepare("UPDATE staff SET status = 'rejected' WHERE id = ?").run(staffId);
+    const result = db.prepare("UPDATE staff SET status = 'rejected', token_version = token_version + 1 WHERE id = ?").run(staffId);
     if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
     res.json({ message: "Staff rejected" });
   } catch {
