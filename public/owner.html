@@ -276,7 +276,7 @@ async function loadDashboard() {
       staffList.innerHTML = "<p class='empty'>No staff members.</p>";
     } else {
       let html = `<table class="data-table"><thead><tr>
-        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Added</th>
+        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Added</th><th>Actions</th>
       </tr></thead><tbody>`;
       allStaff.forEach((s) => {
         html += `<tr>
@@ -286,6 +286,7 @@ async function loadDashboard() {
           <td>${s.phone || "-"}</td>
           <td><span class="badge ${s.status}">${s.status}</span></td>
           <td>${new Date(s.createdAt).toLocaleDateString()}</td>
+          <td><button class="btn btn-danger btn-small" onclick="removeStaff(${s.id}, '${s.name}')">Remove</button></td>
         </tr>`;
       });
       html += "</tbody></table>";
@@ -328,6 +329,21 @@ async function rejectStaff(id) {
     loadDashboard();
   } catch {
     alert("Error rejecting staff");
+  }
+}
+
+async function removeStaff(id, name) {
+  if (!confirm(`Remove staff member "${name}"? This cannot be undone.`)) return;
+  try {
+    const res = await fetch(API + "/api/staff/remove", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ staffId: id }),
+    });
+    if (!res.ok) return alert((await res.json()).error);
+    loadDashboard();
+  } catch {
+    alert("Error removing staff");
   }
 }
 

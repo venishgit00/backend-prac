@@ -371,6 +371,17 @@ app.post("/api/staff/reject", authMiddleware("owner"), (req, res) => {
   }
 });
 
+app.post("/api/staff/remove", authMiddleware("owner"), (req, res) => {
+  try {
+    const { staffId } = req.body;
+    const result = db.prepare("DELETE FROM staff WHERE id = ?").run(staffId);
+    if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
+    res.json({ message: "Staff removed successfully" });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── BOOKINGS ───
 
 app.post("/api/bookings/create", authMiddleware("user"), (req, res) => {
