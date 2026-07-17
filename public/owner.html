@@ -337,8 +337,15 @@ async function switchTab(tab) {
       headers: { Authorization: "Bearer " + token },
     });
     const data = await res.json();
-    if (!data.user || data.user.role !== "owner") return logout();
-  } catch { return logout(); }
+    if (data.user && data.token && data.user.role === "owner") {
+      token = data.token;
+      user = data.user;
+      localStorage.setItem("ownerToken", token);
+      localStorage.setItem("ownerUser", JSON.stringify(user));
+    } else if (!data.user || data.user.role !== "owner") {
+      return logout();
+    }
+  } catch { /* ignore network errors */ }
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
   const btns = document.querySelectorAll(".tab-btn");
@@ -393,16 +400,13 @@ async function loadOffersManager() {
       card.className = "offer-card";
       const imgSrc = offer.image || "";
       card.innerHTML = `
-        <div class="offer-img-area">
-          ${imgSrc ? `<img src="${imgSrc}" class="offer-current-img">` : `<div class="offer-no-img">No image</div>`}
+        <div class="offer-img-area" data-slot="${offer.slot}">
+          ${imgSrc ? `<img src="${imgSrc}" class="offer-current-img">` : `<div class="offer-no-img">Drop image here or click to browse</div>`}
         </div>
         <div class="offer-fields">
           <label>Label</label>
           <input type="text" class="offer-label-input" value="${offer.label}">
-          <div class="offer-upload-row">
-            <input type="file" class="offer-file-input" accept="image/*" data-slot="${offer.slot}">
-            <button class="btn btn-small btn-primary" onclick="document.querySelector('.offer-file-input[data-slot=&quot;${offer.slot}&quot;]').click()">Choose Image</button>
-          </div>
+          <input type="file" class="offer-file-input" accept="image/*" data-slot="${offer.slot}" style="display:none;">
           <div class="offer-actions">
             <button class="btn btn-primary btn-small" onclick="saveOffer(${offer.slot})">Save</button>
             ${imgSrc ? `<button class="btn btn-danger btn-small" onclick="removeOfferImage(${offer.slot})">Remove Image</button>` : ""}
@@ -410,12 +414,41 @@ async function loadOffersManager() {
         </div>
       `;
       container.appendChild(card);
+
+      const imgArea = card.querySelector(".offer-img-area");
       const fileInput = card.querySelector(".offer-file-input");
+
+      imgArea.addEventListener("click", () => fileInput.click());
+
+      imgArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        imgArea.style.borderColor = "#c9a96e";
+        imgArea.style.background = "rgba(201,169,110,0.1)";
+      });
+      imgArea.addEventListener("dragleave", () => {
+        imgArea.style.borderColor = "#444";
+        imgArea.style.background = "transparent";
+      });
+      imgArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        imgArea.style.borderColor = "#444";
+        imgArea.style.background = "transparent";
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) {
+          fileInput.files = e.dataTransfer.files;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            imgArea.innerHTML = `<img src="${ev.target.result}" class="offer-current-img">`;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
       fileInput.addEventListener("change", () => {
         if (fileInput.files[0]) {
           const reader = new FileReader();
           reader.onload = (e) => {
-            card.querySelector(".offer-img-area").innerHTML = `<img src="${e.target.result}" class="offer-current-img">`;
+            imgArea.innerHTML = `<img src="${e.target.result}" class="offer-current-img">`;
           };
           reader.readAsDataURL(fileInput.files[0]);
         }
@@ -494,10 +527,7 @@ function toBase64(file) {
       user = null;
     }
   } catch {
-    localStorage.removeItem("ownerToken");
-    localStorage.removeItem("ownerUser");
-    token = null;
-    user = null;
+    /* ignore network errors */
   }
   if (token && user) {
     document.getElementById("userInfo").textContent = "Owner";
@@ -512,8 +542,15 @@ document.addEventListener("visibilitychange", async () => {
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
-      if (!data.user || data.user.role !== "owner") logout();
-    } catch { logout(); }
+      if (data.user && data.token && data.user.role === "owner") {
+        token = data.token;
+        user = data.user;
+        localStorage.setItem("ownerToken", token);
+        localStorage.setItem("ownerUser", JSON.stringify(user));
+      } else if (!data.user || data.user.role !== "owner") {
+        logout();
+      }
+    } catch { /* ignore network errors */ }
   }
 });
 setInterval(async () => {
@@ -523,10 +560,17 @@ setInterval(async () => {
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
-      if (!data.user || data.user.role !== "owner") logout();
-    } catch { logout(); }
+      if (data.user && data.token && data.user.role === "owner") {
+        token = data.token;
+        user = data.user;
+        localStorage.setItem("ownerToken", token);
+        localStorage.setItem("ownerUser", JSON.stringify(user));
+      } else if (!data.user || data.user.role !== "owner") {
+        logout();
+      }
+    } catch { /* ignore network errors */ }
   }
-}, 30000);
+}, 300000);
 </script>
 </body>
 </html>

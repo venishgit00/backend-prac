@@ -450,9 +450,22 @@ const OFFERS_FILE = path.join(DATA_DIR, "offers.json");
 const UPLOADS_DIR = path.join(__dirname, "public", "uploads");
 if (!require("fs").existsSync(UPLOADS_DIR)) require("fs").mkdirSync(UPLOADS_DIR, { recursive: true });
 
+function initOffers() {
+  if (!require("fs").existsSync(OFFERS_FILE)) {
+    saveOffers({ offers: [
+      { slot: 0, image: null, label: "Special Offer 1" },
+      { slot: 1, image: null, label: "Special Offer 2" },
+      { slot: 2, image: null, label: "Special Offer 3" },
+      { slot: 3, image: null, label: "Special Offer 4" },
+    ]});
+  }
+}
+
 function loadOffers() {
   try { return JSON.parse(require("fs").readFileSync(OFFERS_FILE, "utf8")); } catch { return { offers: [] }; }
 }
+
+initOffers();
 
 function saveOffers(data) {
   require("fs").writeFileSync(OFFERS_FILE, JSON.stringify(data));
