@@ -230,9 +230,10 @@ async function loadDashboard() {
       bookingsList.innerHTML = "<p class='empty'>No bookings yet.</p>";
     } else {
       let html = `<table class="data-table"><thead><tr>
-        <th>ID</th><th>User</th><th>Date</th><th>Time</th><th>Guests</th><th>Table</th><th>Status</th>
+        <th>ID</th><th>User</th><th>Date</th><th>Time</th><th>Guests</th><th>Table</th><th>Status</th><th>Booked At</th>
       </tr></thead><tbody>`;
       bookings.forEach((b) => {
+        const bookedAt = new Date(b.createdAt).toLocaleString();
         html += `<tr>
           <td>${b.id}</td>
           <td>${b.userName}</td>
@@ -241,6 +242,7 @@ async function loadDashboard() {
           <td>${b.guests}</td>
           <td>${b.tableLabel || "T" + b.tableId}</td>
           <td><span class="badge ${b.status}">${b.status}</span></td>
+          <td>${bookedAt}</td>
         </tr>`;
       });
       html += "</tbody></table>";

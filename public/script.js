@@ -274,12 +274,14 @@ async function loadMyBookings() {
       const card = document.createElement("div");
       card.className = "booking-card";
       const canCancel = b.status === "confirmed";
+      const bookedAt = new Date(b.createdAt).toLocaleString();
       card.innerHTML = `
         <div class="details">
           <span>${b.date}</span>
           <span>${b.time}</span>
           <span>${b.guests} guest${b.guests > 1 ? "s" : ""}</span>
           <span>${b.tableLabel || "Table " + b.tableId}</span>
+          <span style="font-size:0.8em;color:#a0a0b0;">Booked: ${bookedAt}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="status ${b.status}">${b.status}</span>
