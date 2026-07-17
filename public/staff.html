@@ -111,7 +111,7 @@ function clearMsg(elId) {
   document.getElementById(elId).className = "msg";
 }
 
-async function logout() {
+async function logout(msg) {
   try { await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch {}
   localStorage.removeItem("staffToken");
   localStorage.removeItem("staffUser");
@@ -123,6 +123,7 @@ async function logout() {
   user = null;
   showSection("login");
   document.getElementById("userInfo").textContent = "";
+  if (msg) showMsg("loginMsg", msg, "error");
 }
 
 // ─── AUTH TAB SWITCHING ───
@@ -292,7 +293,7 @@ async function switchTab(tab) {
       localStorage.setItem("staffToken", token);
       localStorage.setItem("staffUser", JSON.stringify(user));
     } else if (!data.user || data.user.role !== "staff") {
-      return logout();
+      return logout(data.removed ? "Your access has been revoked by the owner." : null);
     }
   } catch { /* ignore network errors */ }
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
@@ -346,7 +347,7 @@ document.addEventListener("visibilitychange", async () => {
         localStorage.setItem("staffToken", token);
         localStorage.setItem("staffUser", JSON.stringify(user));
       } else if (!data.user || data.user.role !== "staff") {
-        logout();
+        logout(data.removed ? "Your access has been revoked by the owner." : null);
       }
     } catch { /* ignore network errors */ }
   }
@@ -364,7 +365,7 @@ setInterval(async () => {
         localStorage.setItem("staffToken", token);
         localStorage.setItem("staffUser", JSON.stringify(user));
       } else if (!data.user || data.user.role !== "staff") {
-        logout();
+        logout(data.removed ? "Your access has been revoked by the owner." : null);
       }
     } catch { /* ignore network errors */ }
   }

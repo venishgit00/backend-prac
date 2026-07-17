@@ -221,6 +221,8 @@ app.post("/api/staff/login", async (req, res) => {
       return res.status(403).json({ error: "Your account is pending owner approval", pending: true });
     if (staff.status === "rejected")
       return res.status(403).json({ error: "Owner has rejected your request." });
+    if (staff.status === "removed")
+      return res.status(403).json({ error: "Your access has been revoked by the owner." });
 
     const showApproval = staff.notified === 0;
     if (staff.notified === 0) {
@@ -297,8 +299,14 @@ app.get("/api/auth/me", (req, res) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
-    if ((decoded.token_version || 0) !== currentVersion)
+    if ((decoded.token_version || 0) !== currentVersion) {
+      if (decoded.role === "staff") {
+        const staff = db.prepare("SELECT status FROM staff WHERE id = ?").get(decoded.id);
+        if (staff && staff.status === "removed")
+          return res.json({ user: null, removed: true });
+      }
       return res.json({ user: null });
+    }
     const newToken = jwt.sign(
       { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role, token_version: currentVersion },
       JWT_SECRET,
@@ -374,7 +382,7 @@ app.post("/api/staff/reject", authMiddleware("owner"), (req, res) => {
 app.post("/api/staff/remove", authMiddleware("owner"), (req, res) => {
   try {
     const { staffId } = req.body;
-    const result = db.prepare("DELETE FROM staff WHERE id = ?").run(staffId);
+    const result = db.prepare("UPDATE staff SET status = 'removed', token_version = token_version + 1 WHERE id = ?").run(staffId);
     if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
     res.json({ message: "Staff removed successfully" });
   } catch {
