@@ -151,6 +151,8 @@ app.post("/api/users/register", async (req, res) => {
 
     const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
     if (existing) return res.status(400).json({ error: "Email already registered" });
+    const staffCheck = db.prepare("SELECT id FROM staff WHERE email = ?").get(email);
+    if (staffCheck) return res.status(400).json({ error: "This email belongs to a staff account." });
 
     const hashed = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
@@ -173,6 +175,8 @@ app.post("/api/users/register", async (req, res) => {
 app.post("/api/users/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    const staffCheck = db.prepare("SELECT id FROM staff WHERE email = ?").get(email);
+    if (staffCheck) return res.status(401).json({ error: "This email belongs to a staff account. Please use the staff login." });
     const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
     if (!user || !(await bcrypt.compare(password, user.password)))
       return res.status(401).json({ error: "Invalid credentials" });
@@ -197,6 +201,8 @@ app.post("/api/staff/register", authMiddleware("owner"), async (req, res) => {
 
     const existing = db.prepare("SELECT id FROM staff WHERE email = ?").get(email);
     if (existing) return res.status(400).json({ error: "Email already exists" });
+    const userCheck = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+    if (userCheck) return res.status(400).json({ error: "This email belongs to a customer account." });
 
     const hashed = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
@@ -213,6 +219,8 @@ app.post("/api/staff/register", authMiddleware("owner"), async (req, res) => {
 app.post("/api/staff/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    const userCheck = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+    if (userCheck) return res.status(401).json({ error: "This email belongs to a customer account. Please use the customer login." });
     const staff = db.prepare("SELECT * FROM staff WHERE email = ?").get(email);
     if (!staff || !(await bcrypt.compare(password, staff.password)))
       return res.status(401).json({ error: "Invalid credentials" });
@@ -253,6 +261,8 @@ app.post("/api/staff/request", async (req, res) => {
 
     const existing = db.prepare("SELECT id FROM staff WHERE email = ?").get(email);
     if (existing) return res.status(400).json({ error: "Email already exists" });
+    const userCheck = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+    if (userCheck) return res.status(400).json({ error: "This email belongs to a customer account. Please use the customer registration." });
 
     const hashed = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
