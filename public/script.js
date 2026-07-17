@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       user = data.user;
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-    } else if (!token) {
+    } else {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       token = null;
