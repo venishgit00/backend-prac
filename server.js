@@ -299,9 +299,14 @@ app.get("/api/auth/me", (req, res) => {
     const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
     if ((decoded.token_version || 0) !== currentVersion)
       return res.json({ user: null });
+    const newToken = jwt.sign(
+      { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role, token_version: currentVersion },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
     res.json({
       user: { id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role },
-      token,
+      token: newToken,
     });
   } catch {
     res.json({ user: null });

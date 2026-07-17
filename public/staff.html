@@ -286,8 +286,15 @@ async function switchTab(tab) {
       headers: { Authorization: "Bearer " + token },
     });
     const data = await res.json();
-    if (!data.user || data.user.role !== "staff") return logout();
-  } catch { return logout(); }
+    if (data.user && data.token && data.user.role === "staff") {
+      token = data.token;
+      user = data.user;
+      localStorage.setItem("staffToken", token);
+      localStorage.setItem("staffUser", JSON.stringify(user));
+    } else if (!data.user || data.user.role !== "staff") {
+      return logout();
+    }
+  } catch { /* ignore network errors */ }
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
   if (tab === "users") {
@@ -318,10 +325,7 @@ async function switchTab(tab) {
       user = null;
     }
   } catch {
-    localStorage.removeItem("staffToken");
-    localStorage.removeItem("staffUser");
-    token = null;
-    user = null;
+    /* ignore network errors */
   }
   if (token && user) {
     document.getElementById("userInfo").textContent = user.name + " (staff)";
@@ -336,8 +340,15 @@ document.addEventListener("visibilitychange", async () => {
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
-      if (!data.user || data.user.role !== "staff") logout();
-    } catch { logout(); }
+      if (data.user && data.token && data.user.role === "staff") {
+        token = data.token;
+        user = data.user;
+        localStorage.setItem("staffToken", token);
+        localStorage.setItem("staffUser", JSON.stringify(user));
+      } else if (!data.user || data.user.role !== "staff") {
+        logout();
+      }
+    } catch { /* ignore network errors */ }
   }
 });
 setInterval(async () => {
@@ -347,10 +358,17 @@ setInterval(async () => {
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
-      if (!data.user || data.user.role !== "staff") logout();
-    } catch { logout(); }
+      if (data.user && data.token && data.user.role === "staff") {
+        token = data.token;
+        user = data.user;
+        localStorage.setItem("staffToken", token);
+        localStorage.setItem("staffUser", JSON.stringify(user));
+      } else if (!data.user || data.user.role !== "staff") {
+        logout();
+      }
+    } catch { /* ignore network errors */ }
   }
-}, 30000);
+}, 300000);
 </script>
 </body>
 </html>

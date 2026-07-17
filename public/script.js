@@ -395,8 +395,15 @@ document.addEventListener("visibilitychange", async () => {
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
-      if (!data.user) logout();
-    } catch { logout(); }
+      if (data.user && data.token) {
+        token = data.token;
+        user = data.user;
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+      } else if (!data.user) {
+        logout();
+      }
+    } catch { /* ignore network errors */ }
   }
 });
 setInterval(async () => {
@@ -406,10 +413,17 @@ setInterval(async () => {
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
-      if (!data.user) logout();
-    } catch { logout(); }
+      if (data.user && data.token) {
+        token = data.token;
+        user = data.user;
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+      } else if (!data.user) {
+        logout();
+      }
+    } catch { /* ignore network errors */ }
   }
-}, 30000);
+}, 300000);
 
 // ─── INIT ───
 
