@@ -156,7 +156,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       if (data.pending) {
         showMsg("loginMsg", "Your request is pending. Waiting for owner approval.", "info");
       } else {
-        showMsg("loginMsg", "Owner has rejected your request.", "error");
+        showMsg("loginMsg", data.error || "Login failed", "error");
       }
       return;
     }
