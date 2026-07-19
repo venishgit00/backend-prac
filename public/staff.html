@@ -210,6 +210,75 @@ document.getElementById("staffRequestForm").addEventListener("submit", async (e)
 });
 
 // ─── DASHBOARD ───
+async function loadSection(url, targetId, renderFn) {
+  try {
+    const res = await fetch(API + url, { headers: { Authorization: "Bearer " + token } });
+    if (res.status === 401 || res.status === 403) {
+      logout();
+      showMsg("loginMsg", "Session expired. Please login again.", "error");
+      return false;
+    }
+    if (!res.ok) {
+      document.getElementById(targetId).innerHTML = "<p class='empty' style='color:red'>Failed to load data.</p>";
+      return true;
+    }
+    const data = await res.json();
+    renderFn(data);
+    return true;
+  } catch {
+    document.getElementById(targetId).innerHTML = "<p class='empty' style='color:red'>Connection error.</p>";
+    return true;
+  }
+}
+
+function renderUsers(users) {
+  const el = document.getElementById("usersList");
+  if (!users.length) {
+    el.innerHTML = "<p class='empty'>No registered users yet.</p>";
+  } else {
+    let html = `<table class="data-table"><thead><tr>
+      <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th>
+    </tr></thead><tbody>`;
+    users.forEach((u) => {
+      html += `<tr>
+        <td>${u.id}</td>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td>${u.phone || "-"}</td>
+        <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+}
+
+function renderBookings(bookings) {
+  const el = document.getElementById("bookingsList");
+  if (!bookings.length) {
+    el.innerHTML = "<p class='empty'>No bookings yet.</p>";
+  } else {
+    let html = `<table class="data-table"><thead><tr>
+      <th>ID</th><th>User</th><th>Date</th><th>Time</th><th>Guests</th><th>Table</th><th>Status</th><th>Booked At</th>
+    </tr></thead><tbody>`;
+    bookings.forEach((b) => {
+      const bookedAt = new Date(b.createdAt).toLocaleString();
+      html += `<tr>
+        <td>${b.id}</td>
+        <td>${b.userName}</td>
+        <td>${b.date}</td>
+        <td>${b.time}</td>
+        <td>${b.guests}</td>
+        <td>${b.tableLabel || "T" + b.tableId}</td>
+        <td><span class="badge ${b.status}">${b.status}</span></td>
+        <td>${bookedAt}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+}
+
 async function loadDashboard() {
   const approvalEl = document.getElementById("approvalMsg");
   if (approvalEl) {
@@ -220,84 +289,12 @@ async function loadDashboard() {
       approvalEl.style.display = "none";
     }
   }
-  try {
-    const [usersRes, bookingsRes] = await Promise.all([
-      fetch(API + "/api/users/all", { headers: { Authorization: "Bearer " + token } }),
-      fetch(API + "/api/bookings/all", { headers: { Authorization: "Bearer " + token } }),
-    ]);
-    if (!usersRes.ok) throw new Error("Auth failed");
-    const users = await usersRes.json();
-    const bookings = await bookingsRes.json();
-
-    const usersList = document.getElementById("usersList");
-    if (!users.length) {
-      usersList.innerHTML = "<p class='empty'>No registered users yet.</p>";
-    } else {
-      let html = `<table class="data-table"><thead><tr>
-        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th>
-      </tr></thead><tbody>`;
-      users.forEach((u) => {
-        html += `<tr>
-          <td>${u.id}</td>
-          <td>${u.name}</td>
-          <td>${u.email}</td>
-          <td>${u.phone || "-"}</td>
-          <td>${new Date(u.createdAt).toLocaleDateString()}</td>
-        </tr>`;
-      });
-      html += "</tbody></table>";
-      usersList.innerHTML = html;
-    }
-
-    const bookingsList = document.getElementById("bookingsList");
-    if (!bookings.length) {
-      bookingsList.innerHTML = "<p class='empty'>No bookings yet.</p>";
-    } else {
-      let html = `<table class="data-table"><thead><tr>
-        <th>ID</th><th>User</th><th>Date</th><th>Time</th><th>Guests</th><th>Table</th><th>Status</th><th>Booked At</th>
-      </tr></thead><tbody>`;
-      bookings.forEach((b) => {
-        const bookedAt = new Date(b.createdAt).toLocaleString();
-        html += `<tr>
-          <td>${b.id}</td>
-          <td>${b.userName}</td>
-          <td>${b.date}</td>
-          <td>${b.time}</td>
-          <td>${b.guests}</td>
-          <td>${b.tableLabel || "T" + b.tableId}</td>
-          <td><span class="badge ${b.status}">${b.status}</span></td>
-          <td>${bookedAt}</td>
-        </tr>`;
-      });
-      html += "</tbody></table>";
-      bookingsList.innerHTML = html;
-    }
-  } catch (err) {
-    if (err.message === "Auth failed") {
-      logout();
-      showMsg("loginMsg", "Session expired. Please login again.", "error");
-    } else {
-      console.error("loadDashboard error:", err);
-      document.getElementById("usersList").innerHTML = "<p class='empty' style='color:red'>Error: " + err.message + "</p>";
-    }
-  }
+  const ok = await loadSection("/api/users/all", "usersList", renderUsers);
+  if (ok === false) return;
+  await loadSection("/api/bookings/all", "bookingsList", renderBookings);
 }
 
-async function switchTab(tab) {
-  try {
-    const res = await fetch("/api/auth/me", {
-      headers: { Authorization: "Bearer " + token },
-    });
-    const data = await res.json();
-    if (data.user && data.token && data.user.role === "staff") {
-      token = data.token;
-      user = data.user;
-      localStorage.setItem("staffToken", token);
-      localStorage.setItem("staffUser", JSON.stringify(user));
-    } else if (!data.user || data.user.role !== "staff") {
-      return logout(data.removed ? "Your access has been revoked by the owner." : null);
-    }
-  } catch { /* ignore network errors */ }
+function switchTab(tab) {
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
   if (tab === "users") {
@@ -322,10 +319,14 @@ async function switchTab(tab) {
       localStorage.setItem("staffToken", token);
       localStorage.setItem("staffUser", JSON.stringify(user));
     } else {
+      const hadToken = !!token;
       localStorage.removeItem("staffToken");
       localStorage.removeItem("staffUser");
       token = null;
       user = null;
+      if (hadToken) {
+        showMsg("loginMsg", data.removed ? "Your access has been revoked by the owner." : "Session expired. Please login again.", "info");
+      }
     }
   } catch {
     /* ignore network errors */

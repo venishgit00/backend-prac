@@ -188,122 +188,134 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 });
 
 // ─── DASHBOARD ───
-async function loadDashboard() {
+async function loadSection(url, targetId, renderFn) {
   try {
-    const [usersRes, bookingsRes, pendingRes, staffRes] = await Promise.all([
-      fetch(API + "/api/users/all", { headers: { Authorization: "Bearer " + token } }),
-      fetch(API + "/api/bookings/all", { headers: { Authorization: "Bearer " + token } }),
-      fetch(API + "/api/staff/pending", { headers: { Authorization: "Bearer " + token } }),
-      fetch(API + "/api/staff/all", { headers: { Authorization: "Bearer " + token } }),
-    ]);
-    if (!usersRes.ok || !bookingsRes.ok || !pendingRes.ok || !staffRes.ok) throw new Error("Auth failed");
-
-    const users = await usersRes.json();
-    const bookings = await bookingsRes.json();
-    const pending = await pendingRes.json();
-    const allStaff = await staffRes.json();
-
-    // Users
-    const usersList = document.getElementById("usersList");
-    if (!users.length) {
-      usersList.innerHTML = "<p class='empty'>No registered users.</p>";
-    } else {
-      let html = `<table class="data-table"><thead><tr>
-        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th>
-      </tr></thead><tbody>`;
-      users.forEach((u) => {
-        html += `<tr>
-          <td>${u.id}</td>
-          <td>${u.name}</td>
-          <td>${u.email}</td>
-          <td>${u.phone || "-"}</td>
-          <td>${new Date(u.createdAt).toLocaleDateString()}</td>
-        </tr>`;
-      });
-      html += "</tbody></table>";
-      usersList.innerHTML = html;
-    }
-
-    // Bookings
-    const bookingsList = document.getElementById("bookingsList");
-    if (!bookings.length) {
-      bookingsList.innerHTML = "<p class='empty'>No bookings yet.</p>";
-    } else {
-      let html = `<table class="data-table"><thead><tr>
-        <th>ID</th><th>User</th><th>Date</th><th>Time</th><th>Guests</th><th>Table</th><th>Status</th><th>Booked At</th>
-      </tr></thead><tbody>`;
-      bookings.forEach((b) => {
-        const bookedAt = new Date(b.createdAt).toLocaleString();
-        html += `<tr>
-          <td>${b.id}</td>
-          <td>${b.userName}</td>
-          <td>${b.date}</td>
-          <td>${b.time}</td>
-          <td>${b.guests}</td>
-          <td>${b.tableLabel || "T" + b.tableId}</td>
-          <td><span class="badge ${b.status}">${b.status}</span></td>
-          <td>${bookedAt}</td>
-        </tr>`;
-      });
-      html += "</tbody></table>";
-      bookingsList.innerHTML = html;
-    }
-
-    // Pending staff
-    const pendingList = document.getElementById("pendingList");
-    if (!pending.length) {
-      pendingList.innerHTML = "<p class='empty'>No pending staff requests.</p>";
-    } else {
-      pendingList.innerHTML = "";
-      pending.forEach((s) => {
-        const div = document.createElement("div");
-        div.className = "pending-request";
-        div.innerHTML = `
-          <div>
-            <strong>${s.name}</strong> (${s.email})<br>
-            <small>Phone: ${s.phone || "-"} | Requested: ${new Date(s.createdAt).toLocaleDateString()}</small>
-          </div>
-          <div class="actions">
-            <button class="btn btn-success btn-small" onclick="approveStaff(${s.id})">Approve</button>
-            <button class="btn btn-danger btn-small" onclick="rejectStaff(${s.id})">Reject</button>
-          </div>
-        `;
-        pendingList.appendChild(div);
-      });
-    }
-
-    // All staff
-    const staffList = document.getElementById("staffList");
-    if (!allStaff.length) {
-      staffList.innerHTML = "<p class='empty'>No staff members.</p>";
-    } else {
-      let html = `<table class="data-table"><thead><tr>
-        <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Added</th><th>Actions</th>
-      </tr></thead><tbody>`;
-      allStaff.forEach((s) => {
-        html += `<tr>
-          <td>${s.id}</td>
-          <td>${s.name}</td>
-          <td>${s.email}</td>
-          <td>${s.phone || "-"}</td>
-          <td><span class="badge ${s.status}">${s.status}</span></td>
-          <td>${new Date(s.createdAt).toLocaleDateString()}</td>
-          <td><button class="btn btn-danger btn-small" onclick="removeStaff(${s.id}, '${s.name}')">Remove</button></td>
-        </tr>`;
-      });
-      html += "</tbody></table>";
-      staffList.innerHTML = html;
-    }
-    loadOffersManager();
-  } catch (err) {
-    if (err.message === "Auth failed") {
+    const res = await fetch(API + url, { headers: { Authorization: "Bearer " + token } });
+    if (res.status === 401 || res.status === 403) {
       logout();
       showMsg("loginMsg", "Session expired. Please login again.", "error");
-    } else {
-      console.error("loadDashboard error:", err);
-      document.getElementById("usersList").innerHTML = "<p class='empty' style='color:red'>Error: " + err.message + "</p>";
+      return false;
     }
+    if (!res.ok) {
+      document.getElementById(targetId).innerHTML = "<p class='empty' style='color:red'>Failed to load data.</p>";
+      return true;
+    }
+    const data = await res.json();
+    renderFn(data);
+    return true;
+  } catch {
+    document.getElementById(targetId).innerHTML = "<p class='empty' style='color:red'>Connection error.</p>";
+    return true;
   }
+}
+
+function renderUsers(users) {
+  const el = document.getElementById("usersList");
+  if (!users.length) {
+    el.innerHTML = "<p class='empty'>No registered users.</p>";
+  } else {
+    let html = `<table class="data-table"><thead><tr>
+      <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th>
+    </tr></thead><tbody>`;
+    users.forEach((u) => {
+      html += `<tr>
+        <td>${u.id}</td>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td>${u.phone || "-"}</td>
+        <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+}
+
+function renderBookings(bookings) {
+  const el = document.getElementById("bookingsList");
+  if (!bookings.length) {
+    el.innerHTML = "<p class='empty'>No bookings yet.</p>";
+  } else {
+    let html = `<table class="data-table"><thead><tr>
+      <th>ID</th><th>User</th><th>Date</th><th>Time</th><th>Guests</th><th>Table</th><th>Status</th><th>Booked At</th>
+    </tr></thead><tbody>`;
+    bookings.forEach((b) => {
+      const bookedAt = new Date(b.createdAt).toLocaleString();
+      html += `<tr>
+        <td>${b.id}</td>
+        <td>${b.userName}</td>
+        <td>${b.date}</td>
+        <td>${b.time}</td>
+        <td>${b.guests}</td>
+        <td>${b.tableLabel || "T" + b.tableId}</td>
+        <td><span class="badge ${b.status}">${b.status}</span></td>
+        <td>${bookedAt}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+}
+
+function renderPendingStaff(pending) {
+  const el = document.getElementById("pendingList");
+  if (!pending.length) {
+    el.innerHTML = "<p class='empty'>No pending staff requests.</p>";
+  } else {
+    el.innerHTML = "";
+    pending.forEach((s) => {
+      const div = document.createElement("div");
+      div.className = "pending-request";
+      div.innerHTML = `
+        <div>
+          <strong>${s.name}</strong> (${s.email})<br>
+          <small>Phone: ${s.phone || "-"} | Requested: ${new Date(s.createdAt).toLocaleDateString()}</small>
+        </div>
+        <div class="actions">
+          <button class="btn btn-success btn-small" onclick="approveStaff(${s.id})">Approve</button>
+          <button class="btn btn-danger btn-small" onclick="rejectStaff(${s.id})">Reject</button>
+        </div>
+      `;
+      el.appendChild(div);
+    });
+  }
+}
+
+function renderAllStaff(allStaff) {
+  const el = document.getElementById("staffList");
+  if (!allStaff.length) {
+    el.innerHTML = "<p class='empty'>No staff members.</p>";
+  } else {
+    let html = `<table class="data-table"><thead><tr>
+      <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Added</th><th>Actions</th>
+    </tr></thead><tbody>`;
+    allStaff.forEach((s) => {
+      html += `<tr>
+        <td>${s.id}</td>
+        <td>${s.name}</td>
+        <td>${s.email}</td>
+        <td>${s.phone || "-"}</td>
+        <td><span class="badge ${s.status}">${s.status}</span></td>
+        <td>${new Date(s.createdAt).toLocaleDateString()}</td>
+        <td>
+          <button class="btn btn-danger btn-small" onclick="removeStaff(${s.id}, '${s.name.replace(/'/g, "\\'")}')">Remove</button>
+        </td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+}
+
+async function loadDashboard() {
+  const ok = await loadSection("/api/users/all", "usersList", renderUsers);
+  if (ok === false) return;
+  await Promise.all([
+    loadSection("/api/bookings/all", "bookingsList", renderBookings),
+    loadSection("/api/staff/pending", "pendingList", renderPendingStaff),
+    loadSection("/api/staff/all", "staffList", renderAllStaff),
+  ]);
+  loadOffersManager();
 }
 
 async function approveStaff(id) {
@@ -350,20 +362,6 @@ async function removeStaff(id, name) {
 }
 
 async function switchTab(tab) {
-  try {
-    const res = await fetch("/api/auth/me", {
-      headers: { Authorization: "Bearer " + token },
-    });
-    const data = await res.json();
-    if (data.user && data.token && data.user.role === "owner") {
-      token = data.token;
-      user = data.user;
-      localStorage.setItem("ownerToken", token);
-      localStorage.setItem("ownerUser", JSON.stringify(user));
-    } else if (!data.user || data.user.role !== "owner") {
-      return logout();
-    }
-  } catch { /* ignore network errors */ }
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
   const btns = document.querySelectorAll(".tab-btn");
@@ -539,10 +537,14 @@ function toBase64(file) {
       localStorage.setItem("ownerToken", token);
       localStorage.setItem("ownerUser", JSON.stringify(user));
     } else {
+      const hadToken = !!token;
       localStorage.removeItem("ownerToken");
       localStorage.removeItem("ownerUser");
       token = null;
       user = null;
+      if (hadToken) {
+        showMsg("loginMsg", "Session expired. Please login again.", "info");
+      }
     }
   } catch {
     /* ignore network errors */
