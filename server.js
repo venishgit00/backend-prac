@@ -102,14 +102,17 @@ function parseCookies(req) {
   const cookie = req.headers.cookie;
   if (!cookie) return {};
   return Object.fromEntries(
-    cookie.split(";").map((c) => c.trim().split("=")).map(([k, v]) => [k, decodeURIComponent(v)])
+    cookie.split(";").map((c) => c.trim()).map((c) => {
+      const idx = c.indexOf("=");
+      return [c.slice(0, idx), decodeURIComponent(c.slice(idx + 1))];
+    })
   );
 }
 
 function setTokenCookie(req, res, token) {
   res.cookie("token", token, {
     httpOnly: true,
-    secure: req.secure,
+    secure: req.secure || process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 365 * 24 * 60 * 60 * 1000,
   });
@@ -131,11 +134,9 @@ function authMiddleware(role) {
       const decoded = jwt.verify(token, JWT_SECRET);
       if (role && decoded.role !== role && decoded.role !== "owner")
         return res.status(403).json({ error: "Access denied" });
-      if (decoded.role !== "staff") {
-        const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
-        if ((decoded.token_version || 0) !== currentVersion)
-          return res.status(401).json({ error: "Session expired, please login again" });
-      }
+      const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
+      if ((decoded.token_version || 0) !== currentVersion)
+        return res.status(401).json({ error: "Session expired, please login again" });
       req.user = decoded;
       next();
     } catch {
@@ -312,12 +313,14 @@ app.get("/api/auth/me", (req, res) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
-    if (decoded.role === "staff") {
-      const staff = db.prepare("SELECT status FROM staff WHERE id = ?").get(decoded.id);
-      if (staff && staff.status === "removed")
-        return res.json({ user: null, removed: true });
-    } else if ((decoded.token_version || 0) !== currentVersion) {
-      return res.json({ user: null });
+    if ((decoded.token_version || 0) !== currentVersion) {
+      if (decoded.role === "staff") {
+        const staff = db.prepare("SELECT status FROM staff WHERE id = ?").get(decoded.id);
+        if (!staff || staff.status !== "approved")
+          return res.json({ user: null, removed: true });
+      } else {
+        return res.json({ user: null });
+      }
     }
     const newToken = jwt.sign(
       { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role, token_version: currentVersion },
