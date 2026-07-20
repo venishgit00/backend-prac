@@ -110,7 +110,7 @@ function setTokenCookie(res, token) {
     httpOnly: true,
     secure: false,
     sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
   });
 }
 
@@ -323,6 +323,7 @@ app.get("/api/auth/me", (req, res) => {
       JWT_SECRET,
       { expiresIn: decoded.role === "staff" ? "100y" : "30d" }
     );
+    setTokenCookie(res, newToken);
     res.json({
       user: { id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role },
       token: newToken,
