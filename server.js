@@ -8,6 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "cafe-management-secret-key-2024";
 
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "10mb" }));
 app.use((req, res, next) => {
   if (req.path.endsWith(".html")) {
@@ -105,10 +106,10 @@ function parseCookies(req) {
   );
 }
 
-function setTokenCookie(res, token) {
+function setTokenCookie(req, res, token) {
   res.cookie("token", token, {
     httpOnly: true,
-    secure: false,
+    secure: req.secure,
     sameSite: "lax",
     maxAge: 365 * 24 * 60 * 60 * 1000,
   });
@@ -167,7 +168,7 @@ app.post("/api/users/register", async (req, res) => {
       JWT_SECRET,
       { expiresIn: "30d" }
     );
-    setTokenCookie(res, token);
+    setTokenCookie(req, res, token);
     res.json({ token, user: { id: result.lastInsertRowid, name, email, role: "user" } });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -188,7 +189,7 @@ app.post("/api/users/login", async (req, res) => {
       JWT_SECRET,
       { expiresIn: "30d" }
     );
-    setTokenCookie(res, token);
+    setTokenCookie(req, res, token);
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: "user" } });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -244,7 +245,7 @@ app.post("/api/staff/login", async (req, res) => {
       JWT_SECRET,
       { expiresIn: "100y" }
     );
-    setTokenCookie(res, token);
+    setTokenCookie(req, res, token);
     res.json({
       token,
       user: { id: staff.id, name: staff.name, email: staff.email, role: "staff" },
@@ -295,7 +296,7 @@ app.post("/api/owner/login", async (req, res) => {
       JWT_SECRET,
       { expiresIn: "30d" }
     );
-    setTokenCookie(res, token);
+    setTokenCookie(req, res, token);
     res.json({ token, user: { id: 0, name: "Owner", email: "owner@cafe.com", role: "owner" } });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -323,7 +324,7 @@ app.get("/api/auth/me", (req, res) => {
       JWT_SECRET,
       { expiresIn: decoded.role === "staff" ? "100y" : "30d" }
     );
-    setTokenCookie(res, newToken);
+    setTokenCookie(req, res, newToken);
     res.json({
       user: { id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role },
       token: newToken,

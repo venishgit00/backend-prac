@@ -91,8 +91,9 @@
 
 <script>
 const API = "";
-let user = null;
-let showApproval = false;
+const LS_KEY = "staff_token";
+const USER_KEY = "staff_user";
+let user = JSON.parse(localStorage.getItem(USER_KEY) || "null");
 
 function showSection(id) {
   document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
@@ -110,15 +111,42 @@ function clearMsg(elId) {
   document.getElementById(elId).className = "msg";
 }
 
+function getToken() { return localStorage.getItem(LS_KEY); }
+function setToken(t) { if (t) localStorage.setItem(LS_KEY, t); else localStorage.removeItem(LS_KEY); }
+function setUser(u) { if (u) localStorage.setItem(USER_KEY, JSON.stringify(u)); else localStorage.removeItem(USER_KEY); }
+
+async function refreshSession() {
+  const t = getToken();
+  if (!t) return;
+  try {
+    const res = await fetch("/api/auth/me", { headers: { Authorization: "Bearer " + t } });
+    const data = await res.json();
+    if (data.user && data.user.role === "staff") {
+      user = data.user;
+      if (data.token) setToken(data.token);
+      setUser(user);
+    } else if (data.removed) {
+      setToken(null); setUser(null); user = null;
+      showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
+      showSection("login");
+    } else {
+      setToken(null); setUser(null); user = null;
+      showSection("login");
+    }
+  } catch { /* ignore */ }
+}
+
 async function logout(msg) {
   try { await fetch("/api/logout", { method: "POST" }); } catch {}
+  setToken(null);
+  setUser(null);
+  user = null;
+  showSection("login");
+  document.getElementById("userInfo").textContent = "";
   ["usersList", "bookingsList"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = "";
   });
-  user = null;
-  showSection("login");
-  document.getElementById("userInfo").textContent = "";
   if (msg) showMsg("loginMsg", msg, "error");
 }
 
@@ -157,15 +185,13 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       }
       return;
     }
+    setToken(data.token);
     user = data.user;
+    setUser(user);
     document.getElementById("userInfo").textContent = user.name + " (staff)";
     if (data.showApproval) {
       showMsg("loginMsg", "Owner has approved your request.", "success");
-      setTimeout(() => {
-        showApproval = true;
-        loadDashboard();
-        showSection("dashboard");
-      }, 2000);
+      setTimeout(() => { loadDashboard(); showSection("dashboard"); }, 2000);
       return;
     }
     loadDashboard();
@@ -205,12 +231,9 @@ document.getElementById("staffRequestForm").addEventListener("submit", async (e)
 // ─── DASHBOARD ───
 async function loadSection(url, targetId, renderFn) {
   try {
-    const res = await fetch(API + url);
-    if (res.status === 401 || res.status === 403) {
-      logout();
-      showMsg("loginMsg", "Session expired. Please login again.", "error");
-      return false;
-    }
+    const res = await fetch(API + url, {
+      headers: { Authorization: "Bearer " + getToken() },
+    });
     if (!res.ok) {
       document.getElementById(targetId).innerHTML = "<p class='empty' style='color:red'>Failed to load data.</p>";
       return true;
@@ -275,15 +298,9 @@ function renderBookings(bookings) {
 async function loadDashboard() {
   const approvalEl = document.getElementById("approvalMsg");
   if (approvalEl) {
-    if (showApproval) {
-      approvalEl.style.display = "flex";
-      setTimeout(() => { approvalEl.style.display = "none"; }, 5000);
-    } else {
-      approvalEl.style.display = "none";
-    }
+    approvalEl.style.display = "none";
   }
-  const ok = await loadSection("/api/users/all", "usersList", renderUsers);
-  if (ok === false) return;
+  await loadSection("/api/users/all", "usersList", renderUsers);
   await loadSection("/api/bookings/all", "bookingsList", renderBookings);
 }
 
@@ -301,21 +318,48 @@ function switchTab(tab) {
 
 // ─── INIT ───
 (async () => {
-  try {
-    const res = await fetch("/api/auth/me");
-    const data = await res.json();
-    if (data.user && data.user.role === "staff") {
-      user = data.user;
-    } else if (data.removed) {
-      showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
+  const savedToken = getToken();
+  if (savedToken) {
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: "Bearer " + savedToken },
+      });
+      const data = await res.json();
+      if (data.user && data.user.role === "staff") {
+        user = data.user;
+        if (data.token) setToken(data.token);
+        setUser(user);
+      } else if (data.removed) {
+        setToken(null); setUser(null); user = null;
+        showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
+      } else {
+        setToken(null); setUser(null); user = null;
+      }
+    } catch {
+      if (!user) { setToken(null); setUser(null); }
     }
-  } catch { /* ignore network errors */ }
+  }
   if (user) {
     document.getElementById("userInfo").textContent = user.name + " (staff)";
     loadDashboard();
     showSection("dashboard");
   }
 })();
+
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible" && getToken() && user) {
+    await refreshSession();
+    if (user) {
+      document.getElementById("userInfo").textContent = user.name + " (staff)";
+    }
+  }
+});
+
+setInterval(async () => {
+  if (getToken() && user) {
+    await refreshSession();
+  }
+}, 300000);
 </script>
 </body>
 </html>
