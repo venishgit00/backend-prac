@@ -130,9 +130,11 @@ function authMiddleware(role) {
       const decoded = jwt.verify(token, JWT_SECRET);
       if (role && decoded.role !== role && decoded.role !== "owner")
         return res.status(403).json({ error: "Access denied" });
-      const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
-      if ((decoded.token_version || 0) !== currentVersion)
-        return res.status(401).json({ error: "Session expired, please login again" });
+      if (decoded.role !== "staff") {
+        const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
+        if ((decoded.token_version || 0) !== currentVersion)
+          return res.status(401).json({ error: "Session expired, please login again" });
+      }
       req.user = decoded;
       next();
     } catch {
@@ -240,7 +242,7 @@ app.post("/api/staff/login", async (req, res) => {
     const token = jwt.sign(
       { id: staff.id, email: staff.email, name: staff.name, role: "staff", token_version: staff.token_version },
       JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "100y" }
     );
     setTokenCookie(res, token);
     res.json({
@@ -309,18 +311,17 @@ app.get("/api/auth/me", (req, res) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const currentVersion = getCurrentTokenVersion(decoded.role, decoded.id);
-    if ((decoded.token_version || 0) !== currentVersion) {
-      if (decoded.role === "staff") {
-        const staff = db.prepare("SELECT status FROM staff WHERE id = ?").get(decoded.id);
-        if (staff && staff.status === "removed")
-          return res.json({ user: null, removed: true });
-      }
+    if (decoded.role === "staff") {
+      const staff = db.prepare("SELECT status FROM staff WHERE id = ?").get(decoded.id);
+      if (staff && staff.status === "removed")
+        return res.json({ user: null, removed: true });
+    } else if ((decoded.token_version || 0) !== currentVersion) {
       return res.json({ user: null });
     }
     const newToken = jwt.sign(
       { id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role, token_version: currentVersion },
       JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: decoded.role === "staff" ? "100y" : "30d" }
     );
     res.json({
       user: { id: decoded.id, name: decoded.name, email: decoded.email, role: decoded.role },
