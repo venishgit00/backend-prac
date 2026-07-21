@@ -215,7 +215,8 @@ app.post("/api/staff/register", authMiddleware("owner"), async (req, res) => {
     ).run(name, email, hashed, phone || "", req.user.id, createdAt);
 
     res.json({ staff: { id: result.lastInsertRowid, name, email, status: "approved" } });
-  } catch {
+  } catch (e) {
+    console.error("Error registering staff:", e);
     res.status(500).json({ error: "Server error" });
   }
 });

@@ -370,6 +370,15 @@ async function switchTab(tab) {
   if (idx >= 0) {
     btns[idx].classList.add("active");
     document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add("active");
+    if (tab === "staff") {
+      loadSection("/api/staff/all", "staffList", renderAllStaff);
+    } else if (tab === "pending") {
+      loadSection("/api/staff/pending", "pendingList", renderPendingStaff);
+    } else if (tab === "users") {
+      loadSection("/api/users/all", "usersList", renderUsers);
+    } else if (tab === "bookings") {
+      loadSection("/api/bookings/all", "bookingsList", renderBookings);
+    }
   }
 }
 
