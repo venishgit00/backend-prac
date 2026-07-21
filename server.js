@@ -97,71 +97,6 @@ function saveOwnerSettings(s) {
   require("fs").writeFileSync(SETTINGS_FILE, JSON.stringify(s));
 }
 
-// ─── DATA PERSISTENCE (sync SQLite <-> JSON for Render compatibility) ───
-
-const STAFF_JSON = path.join(DATA_DIR, "staff.json");
-const USERS_JSON = path.join(DATA_DIR, "users.json");
-const BOOKINGS_JSON = path.join(DATA_DIR, "bookings.json");
-
-function syncDataToJSON() {
-  try {
-    const staff = db.prepare("SELECT * FROM staff").all();
-    require("fs").writeFileSync(STAFF_JSON, JSON.stringify(staff, null, 2));
-    const users = db.prepare("SELECT id, name, email, phone, createdAt FROM users").all();
-    require("fs").writeFileSync(USERS_JSON, JSON.stringify(users, null, 2));
-    const bookings = db.prepare("SELECT * FROM bookings").all();
-    require("fs").writeFileSync(BOOKINGS_JSON, JSON.stringify(bookings, null, 2));
-  } catch (e) {
-    console.error("Error syncing data to JSON:", e);
-  }
-}
-
-function importDataFromJSON() {
-  try {
-    const staffCount = db.prepare("SELECT COUNT(*) as c FROM staff").get().c;
-    if (staffCount === 0 && require("fs").existsSync(STAFF_JSON)) {
-      const staff = JSON.parse(require("fs").readFileSync(STAFF_JSON, "utf8"));
-      if (staff.length > 0) {
-        const insert = db.prepare("INSERT INTO staff (id, name, email, password, phone, status, addedBy, notified, createdAt, token_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        const tx = db.transaction(() => {
-          for (const s of staff) insert.run(s.id, s.name, s.email, s.password, s.phone || "", s.status || "pending", s.addedBy || null, s.notified || 1, s.createdAt, s.token_version || 0);
-        });
-        tx();
-        console.log(`Imported ${staff.length} staff members from JSON`);
-      }
-    }
-    const userCount = db.prepare("SELECT COUNT(*) as c FROM users").get().c;
-    if (userCount === 0 && require("fs").existsSync(USERS_JSON)) {
-      const users = JSON.parse(require("fs").readFileSync(USERS_JSON, "utf8"));
-      if (users.length > 0) {
-        const insert = db.prepare("INSERT INTO users (id, name, email, password, phone, createdAt) VALUES (?, ?, ?, ?, ?, ?)");
-        const tx = db.transaction(() => {
-          for (const u of users) insert.run(u.id, u.name, u.email, u.password, u.phone || "", u.createdAt);
-        });
-        tx();
-        console.log(`Imported ${users.length} users from JSON`);
-      }
-    }
-    const bookingCount = db.prepare("SELECT COUNT(*) as c FROM bookings").get().c;
-    if (bookingCount === 0 && require("fs").existsSync(BOOKINGS_JSON)) {
-      const bookings = JSON.parse(require("fs").readFileSync(BOOKINGS_JSON, "utf8"));
-      if (bookings.length > 0) {
-        const insert = db.prepare("INSERT INTO bookings (id, userId, userName, userEmail, date, time, guests, tableId, tableLabel, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        const tx = db.transaction(() => {
-          for (const b of bookings) insert.run(b.id, b.userId, b.userName, b.userEmail, b.date, b.time, b.guests, b.tableId, b.tableLabel, b.status || "confirmed", b.createdAt);
-        });
-        tx();
-        console.log(`Imported ${bookings.length} bookings from JSON`);
-      }
-    }
-  } catch (e) {
-    console.error("Error importing data from JSON:", e);
-  }
-}
-
-importDataFromJSON();
-syncDataToJSON();
-
 // ─── HELPERS ───
 function parseCookies(req) {
   const cookie = req.headers.cookie;
@@ -229,7 +164,6 @@ app.post("/api/users/register", async (req, res) => {
       "INSERT INTO users (name, email, password, phone, createdAt) VALUES (?, ?, ?, ?, ?)"
     ).run(name, email, hashed, phone || "", createdAt);
 
-    syncDataToJSON();
     const token = jwt.sign(
       { id: result.lastInsertRowid, email, name, role: "user", token_version: 0 },
       JWT_SECRET,
@@ -237,8 +171,7 @@ app.post("/api/users/register", async (req, res) => {
     );
     setTokenCookie(req, res, token);
     res.json({ token, user: { id: result.lastInsertRowid, name, email, role: "user" } });
-  } catch (e) {
-    console.error("Error registering user:", e);
+  } catch {
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -281,7 +214,6 @@ app.post("/api/staff/register", authMiddleware("owner"), async (req, res) => {
       "INSERT INTO staff (name, email, password, phone, status, addedBy, createdAt) VALUES (?, ?, ?, ?, 'approved', ?, ?)"
     ).run(name, email, hashed, phone || "", req.user.id, createdAt);
 
-    syncDataToJSON();
     res.json({ staff: { id: result.lastInsertRowid, name, email, status: "approved" } });
   } catch (e) {
     console.error("Error registering staff:", e);
@@ -343,7 +275,6 @@ app.post("/api/staff/request", async (req, res) => {
       "INSERT INTO staff (name, email, password, phone, status, createdAt) VALUES (?, ?, ?, ?, 'pending', ?)"
     ).run(name, email, hashed, phone || "", createdAt);
 
-    syncDataToJSON();
     res.json({
       message: "Registration request sent. Waiting for owner approval.",
       staff: { id: result.lastInsertRowid, name, email, status: "pending" },
@@ -447,7 +378,6 @@ app.post("/api/staff/approve", authMiddleware("owner"), (req, res) => {
     const { staffId } = req.body;
     const result = db.prepare("UPDATE staff SET status = 'approved', notified = 0, token_version = token_version + 1 WHERE id = ?").run(staffId);
     if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
-    syncDataToJSON();
     const staff = db.prepare("SELECT id, name, email, status FROM staff WHERE id = ?").get(staffId);
     res.json({ message: "Staff approved", staff });
   } catch {
@@ -460,7 +390,6 @@ app.post("/api/staff/reject", authMiddleware("owner"), (req, res) => {
     const { staffId } = req.body;
     const result = db.prepare("UPDATE staff SET status = 'rejected', token_version = token_version + 1 WHERE id = ?").run(staffId);
     if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
-    syncDataToJSON();
     res.json({ message: "Staff rejected" });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -472,7 +401,6 @@ app.post("/api/staff/remove", authMiddleware("owner"), (req, res) => {
     const { staffId } = req.body;
     const result = db.prepare("UPDATE staff SET status = 'removed', token_version = token_version + 1 WHERE id = ?").run(staffId);
     if (result.changes === 0) return res.status(404).json({ error: "Staff not found" });
-    syncDataToJSON();
     res.json({ message: "Staff removed successfully" });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -504,7 +432,6 @@ app.post("/api/bookings/create", authMiddleware("user"), (req, res) => {
     ).run(req.user.id, req.user.name, req.user.email, date, time, guests, tableId, table.label, createdAt);
 
     const booking = db.prepare("SELECT * FROM bookings WHERE id = ?").get(result.lastInsertRowid);
-    syncDataToJSON();
     res.json({ booking });
   } catch {
     res.status(500).json({ error: "Server error" });
@@ -543,7 +470,6 @@ app.post("/api/bookings/cancel", authMiddleware("user"), (req, res) => {
     const isSameDay = booking.date === today;
 
     db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?").run(bookingId);
-    syncDataToJSON();
     res.json({
       message: isSameDay
         ? "Booking cancelled. 20% refund will be processed (80% cancellation charge applies for same-day cancellations)."
