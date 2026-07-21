@@ -1,3 +1,4 @@
 node_modules/
 data/database.sqlite*
-data/admin-settings.json
+data/*.json
+!data/tables.json
