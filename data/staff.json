@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "name": "Staff Test",
+    "email": "stafftest@test.com",
+    "password": "$2a$10$.o5lCt.BSURv/v1fdTjGgOawpF1cdiOzaOdtBD.L8zXyU3eKTsuBm",
+    "phone": "123",
+    "status": "approved",
+    "addedBy": null,
+    "createdAt": "2026-07-07T05:17:52.954Z",
+    "notified": 1,
+    "token_version": 0
+  },
+  {
+    "id": 2,
+    "name": "Staff Rejected",
+    "email": "staffrejected@test.com",
+    "password": "$2a$10$abLP.pcRyDJg5iy3ARsT.eD3ooNVcZcIfyUPq1fNBlwdFlXiNYPUq",
+    "phone": "123",
+    "status": "rejected",
+    "addedBy": null,
+    "createdAt": "2026-07-07T05:22:30.201Z",
+    "notified": 1,
+    "token_version": 0
+  },
+  {
+    "id": 3,
+    "name": "Test",
+    "email": "final@test.com",
+    "password": "$2a$10$9nDuemLSG2Mo6vvmqaXl2.xp1SOCACyhaK2MvI1oQ0JKRShhJqORG",
+    "phone": "",
+    "status": "approved",
+    "addedBy": null,
+    "createdAt": "2026-07-07T05:49:37.923Z",
+    "notified": 1,
+    "token_version": 0
+  },
+  {
+    "id": 4,
+    "name": "Rejected",
+    "email": "rejected@test.com",
+    "password": "$2a$10$DAUC7sx22x1LhXkByskjOeis3G6JpsmF.ezQaLuBFnKCaBwp3QQnG",
+    "phone": "",
+    "status": "rejected",
+    "addedBy": null,
+    "createdAt": "2026-07-07T05:50:41.404Z",
+    "notified": 1,
+    "token_version": 0
+  },
+  {
+    "id": 5,
+    "name": "TestStaff",
+    "email": "teststaff@test.com",
+    "password": "$2a$10$gQFjUl5lW6yrrDq9Ahx0Wun.nJnRfzQ4QspPCK2.O4anv49YCk8ou",
+    "phone": "",
+    "status": "approved",
+    "addedBy": null,
+    "createdAt": "2026-07-14T08:14:46.945Z",
+    "notified": 1,
+    "token_version": 0
+  }
+]
