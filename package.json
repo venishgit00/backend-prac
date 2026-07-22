@@ -4,11 +4,12 @@
   "description": "Complete cafe/restaurant website with booking and staff management",
   "main": "server.js",
   "engines": {
-    "node": ">=18.0.0"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "postinstall": "npm rebuild better-sqlite3"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
