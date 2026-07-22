@@ -13,7 +13,7 @@ app.set("trust proxy", 1);
 const cors = require("cors");
 app.use(cors({
   origin: process.env.FRONTEND_URL||"http://localhost:3000",
-  credentials: true;
+  credentials: true,
 }));
 
 app.use(express.json({ limit: "10mb" }));
@@ -117,7 +117,7 @@ function parseCookies(req) {
       const name = c.slice(0, idx).trim();
       const value = c.slice(idx+1).trim();
       try{
-        cookies[name] = decodeURLComponents(value);
+        cookies[name] = decodeURIComponent(value);
       } catch{
         cookies[name] = value;
       }
