@@ -9,6 +9,13 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "cafe-management-secret-key-2024";
 
 app.set("trust proxy", 1);
+
+const cors = require("cors");
+app.use(cors({
+  origin: process.env.FRONTEND_URL||"http://localhost:3000",
+  credentials: true;
+}));
+
 app.use(express.json({ limit: "10mb" }));
 app.use((req, res, next) => {
   if (req.path.endsWith(".html")) {
@@ -16,6 +23,8 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+
 app.use(express.static(path.join(__dirname, "public")));
 
 const DATA_DIR = path.join(__dirname, "data");
@@ -101,28 +110,36 @@ function saveOwnerSettings(s) {
 function parseCookies(req) {
   const cookie = req.headers.cookie;
   if (!cookie) return {};
-  return Object.fromEntries(
-    cookie.split(";").map((c) => c.trim()).map((c) => {
+  const cookies = {};
+    cookie.split(";").forEach((c) => {
       const idx = c.indexOf("=");
-      return [c.slice(0, idx), decodeURIComponent(c.slice(idx + 1))];
-    })
-  );
+      if (idx===-1) return;
+      const name = c.slice(0, idx).trim();
+      const value = c.slice(idx+1).trim();
+      try{
+        cookies[name] = decodeURLComponents(value);
+      } catch{
+        cookies[name] = value;
+      }
+    });
+    return cookies;
 }
 
 function setTokenCookie(req, res, token) {
-  res.cookie("token", token, {
+  const isProd=process.env.NODE_ENV === "production";
+  res.cookie("token", token,{
     httpOnly: true,
-    secure: req.secure || process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: "none",
     maxAge: 365 * 24 * 60 * 60 * 1000,
   });
 }
 
 function getCurrentTokenVersion(role, id) {
-  if (role === "owner") return loadOwnerSettings().ownerTokenVersion;
+  if (role === "owner") return loadOwnerSettings().ownerTokenVersion||0;
   const table = role === "user" ? "users" : "staff";
   const row = db.prepare(`SELECT token_version FROM ${table} WHERE id = ?`).get(id);
-  return row ? row.token_version : 0;
+  return (row && row.token_version !==null && row.token_version !== undefined) ? row.token_version : 0;
 }
 
 function authMiddleware(role) {
@@ -186,7 +203,7 @@ app.post("/api/users/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, name: user.name, role: "user", token_version: user.token_version },
+      { id: user.id, email: user.email, name: user.name, role: "user", token_version: user.token_version || 0 },
       JWT_SECRET,
       { expiresIn: "30d" }
     );
@@ -243,7 +260,7 @@ app.post("/api/staff/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: staff.id, email: staff.email, name: staff.name, role: "staff", token_version: staff.token_version },
+      { id: staff.id, email: staff.email, name: staff.name, role: "staff", token_version: staff.token_version || 0 },
       JWT_SECRET,
       { expiresIn: "100y" }
     );

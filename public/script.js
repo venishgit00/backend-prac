@@ -32,7 +32,7 @@ function updateNav() {
 }
 
 async function logout() {
-  try { await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch {}
+  try { await fetch("/api/logout", { method: "POST", credentials: 'include', headers: { Authorization: "Bearer " + token } }); } catch {}
   localStorage.removeItem("token");
   localStorage.removeItem("user");
   token = null;
@@ -62,6 +62,7 @@ document.getElementById("userLoginForm")?.addEventListener("submit", async (e) =
   try {
     const res = await fetch(API + "/api/users/login", {
       method: "POST",
+      credentials: 'include',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
@@ -89,6 +90,7 @@ document.getElementById("userRegisterForm")?.addEventListener("submit", async (e
   try {
     const res = await fetch(API + "/api/users/register", {
       method: "POST",
+      credentials: 'include',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, phone }),
     });
@@ -123,6 +125,7 @@ function switchAuthTab(tab) {
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     const res = await fetch("/api/auth/me", {
+      credentials: 'include',
       headers: token ? { Authorization: "Bearer " + token } : {},
     });
     const data = await res.json();
@@ -185,7 +188,7 @@ async function checkAvailability() {
   document.getElementById("seatMap").innerHTML = '<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;color:#a0a0b0;min-height:200px;"><span>Loading available tables...</span></div>';
 
   try {
-    const res = await fetch(API + `/api/tables/available?date=${date}&time=${time}&guests=${guests}`);
+    const res = await fetch(API + `/api/tables/available?date=${date}&time=${time}&guests=${guests}`, { credentials: 'include' });
     const data = await res.json();
     renderSeatMap(data);
   } catch {
@@ -238,6 +241,7 @@ async function confirmBooking() {
   try {
     const res = await fetch(API + "/api/bookings/create", {
       method: "POST",
+      credentials: 'include',
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
       body: JSON.stringify({ date, time, guests, tableId: selectedTableId }),
     });
@@ -259,6 +263,7 @@ async function loadMyBookings() {
   if (!token || !user || user.role !== "user") return;
   try {
     const res = await fetch(API + "/api/bookings/my", {
+      credentials: 'include',
       headers: { Authorization: "Bearer " + token },
     });
     if (!res.ok) return;
@@ -303,6 +308,7 @@ async function cancelBooking(bookingId, isSameDay) {
   try {
     const res = await fetch(API + "/api/bookings/cancel", {
       method: "POST",
+      credentials: 'include',
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
       body: JSON.stringify({ bookingId }),
     });
@@ -324,7 +330,7 @@ const dotsContainer = document.getElementById("carouselDots");
 async function loadOffers() {
   if (!track) return;
   try {
-    const res = await fetch("/api/offers");
+    const res = await fetch("/api/offers", { credentials: 'include' });
     const data = await res.json();
     const slides = track.querySelectorAll(".carousel-slide");
     data.offers.forEach((offer) => {
@@ -394,6 +400,7 @@ document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible" && token && user) {
     try {
       const res = await fetch("/api/auth/me", {
+        credentials: 'include',
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
@@ -412,6 +419,7 @@ setInterval(async () => {
   if (token && user) {
     try {
       const res = await fetch("/api/auth/me", {
+        credentials: 'include',
         headers: { Authorization: "Bearer " + token },
       });
       const data = await res.json();
