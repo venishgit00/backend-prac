@@ -370,9 +370,20 @@ app.get("/api/auth/me", async (req, res) => {
     const currentVersion = await getCurrentTokenVersion(decoded.role, decoded.id);
     if ((decoded.token_version || 0) !== currentVersion) {
       if (decoded.role === "staff") {
-        const staff = await pool.query("SELECT status FROM staff WHERE id = $1", [decoded.id]);
+        const staff = await pool.query("SELECT status, name, email FROM staff WHERE id = $1", [decoded.id]);
         if (!staff.rows[0] || staff.rows[0].status !== "approved")
           return res.json({ user: null, removed: true });
+        // Staff is still approved - issue new token with current version
+        const newToken = jwt.sign(
+          { id: decoded.id, email: staff.rows[0].email, name: staff.rows[0].name, role: "staff", token_version: currentVersion },
+          JWT_SECRET,
+          { expiresIn: "100y" }
+        );
+        setTokenCookie(req, res, newToken);
+        return res.json({
+          user: { id: decoded.id, name: staff.rows[0].name, email: staff.rows[0].email, role: "staff" },
+          token: newToken,
+        });
       } else {
         return res.json({ user: null });
       }

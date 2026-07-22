@@ -136,19 +136,27 @@ async function refreshLogin() {
       setUser(user);
       return true;
     }
-    clearLoginState();
     if (data.removed) {
+      clearLoginState();
       showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
-    } else {
-      showMsg("loginMsg", "Session expired. Please login again.", "error");
+      showSection("login");
+      return false;
     }
-    showSection("login");
-    return false;
+    // Server returned { user: null } without removed flag - session expired
+    // Only clear state if we are calling this from the periodic refresh,
+    // not on initial load (to avoid clearing on transient issues)
+    const wasExplicitLogout = data && data.user === null && !data.removed;
+    if (wasExplicitLogout) {
+      clearLoginState();
+      showMsg("loginMsg", "Session expired. Please login again.", "error");
+      showSection("login");
+      return false;
+    }
+    return true; // Keep session alive on transient issues
   } catch {
-    document.getElementById("userInfo").textContent = "";
-    showMsg("loginMsg", "Connection error. Please try again.", "error");
-    showSection("login");
-    return false;
+    // Network error - don't clear login state, keep the cached session
+    // The user info remains displayed from localStorage
+    return true;
   }
 }
 
@@ -347,6 +355,12 @@ function switchTab(tab) {
 (async () => {
   const savedToken = getToken();
   if (savedToken) {
+    // Use cached user info immediately to show UI
+    if (user) {
+      document.getElementById("userInfo").textContent = user.name + " (staff)";
+      loadDashboard();
+      showSection("dashboard");
+    }
     try {
       const res = await fetch("/api/auth/me", {
         credentials: 'include',
@@ -360,32 +374,61 @@ function switchTab(tab) {
       } else if (data.removed) {
         clearLoginState();
         showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
-      } else {
+        showSection("login");
+        return;
+      } else if (!user) {
+        // No cached user and API says no user
         clearLoginState();
+        return;
       }
     } catch {
-      showMsg("loginMsg", "Connection error. Please try again.", "error");
-      return;
+      // Network error - keep cached user if we have one
+      if (!user) {
+        clearLoginState();
+        return;
+      }
     }
   }
   if (user) {
     document.getElementById("userInfo").textContent = user.name + " (staff)";
-    loadDashboard();
-    showSection("dashboard");
+    if (document.getElementById("section-dashboard").classList.contains("active") === false) {
+      loadDashboard();
+      showSection("dashboard");
+    }
   }
 })();
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && getToken() && user) {
-    refreshLogin();
+    // Silently refresh in background - don't show errors
+    fetch("/api/auth/me", {
+      credentials: 'include',
+      headers: { Authorization: "Bearer " + getToken() },
+    }).then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.user && data.user.role === "staff") {
+        user = data.user;
+        if (data.token) setToken(data.token);
+        setUser(user);
+        document.getElementById("userInfo").textContent = user.name + " (staff)";
+      } else if (data.removed) {
+        clearLoginState();
+        showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
+        showSection("login");
+      }
+    }).catch(() => {
+      // Silently ignore network errors - session remains intact
+    });
   }
 });
 
+// Periodic refresh - extended to 10 minutes to reduce unnecessary calls
 setInterval(() => {
   if (getToken() && user) {
     refreshLogin();
   }
-}, 300000);
+}, 600000);
 </script>
 </body>
 </html>

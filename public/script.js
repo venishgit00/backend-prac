@@ -123,6 +123,11 @@ function switchAuthTab(tab) {
 
 // ─── BOOKING ───
 document.addEventListener("DOMContentLoaded", async () => {
+  // If we have cached token/user from localStorage, show UI immediately
+  if (user && token) {
+    updateNav();
+    if (user.role === "user") updateBookingAuth();
+  }
   try {
     const res = await fetch("/api/auth/me", {
       credentials: 'include',
@@ -134,19 +139,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       user = data.user;
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-    } else {
+    } else if (!user) {
+      // Only clear if no cached user exists
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       token = null;
       user = null;
     }
+    // If data.user is null but we have cached user, keep the cached session
   } catch {
-    if (!token) {
+    if (!token && !user) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       token = null;
       user = null;
     }
+    // On network error with valid cached session, keep it
   }
   updateNav();
   const today = new Date().toISOString().split("T")[0];
@@ -409,10 +417,8 @@ document.addEventListener("visibilitychange", async () => {
         user = data.user;
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
-      } else if (!data.user) {
-        logout();
       }
-    } catch { /* ignore network errors */ }
+    } catch { /* silently ignore network errors - session remains intact */ }
   }
 });
 setInterval(async () => {
@@ -428,12 +434,10 @@ setInterval(async () => {
         user = data.user;
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
-      } else if (!data.user) {
-        logout();
       }
-    } catch { /* ignore network errors */ }
+    } catch { /* silently ignore network errors - session remains intact */ }
   }
-}, 300000);
+}, 600000);
 
 // ─── INIT ───
 
