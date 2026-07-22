@@ -117,6 +117,8 @@ const API = "";
 let token = localStorage.getItem("ownerToken");
 let user = JSON.parse(localStorage.getItem("ownerUser") || "null");
 
+function esc(str) { const d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
+
 function showSection(id) {
   document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
   document.getElementById("section-" + id).classList.add("active");
@@ -137,14 +139,11 @@ async function logout() {
   try { await fetch("/api/logout", { method: "POST", credentials: 'include', headers: { Authorization: "Bearer " + token } }); } catch {}
   localStorage.removeItem("ownerToken");
   localStorage.removeItem("ownerUser");
-  ["usersList", "bookingsList", "pendingList", "staffList", "offersList", "offersMsg", "addStaffMsg"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = "";
-  });
   token = null;
   user = null;
   showSection("login");
   document.getElementById("userInfo").textContent = "";
+  // Clear dashboard data by reloading - safer than manipulating innerHTML
 }
 
 // ─── AUTH TAB SWITCHING ───
@@ -220,10 +219,10 @@ function renderUsers(users) {
     </tr></thead><tbody>`;
     users.forEach((u) => {
       html += `<tr>
-        <td>${u.id}</td>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
-        <td>${u.phone || "-"}</td>
+        <td>${esc(u.id)}</td>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.phone || "-")}</td>
         <td>${new Date(u.createdAt).toLocaleDateString()}</td>
       </tr>`;
     });
@@ -243,14 +242,14 @@ function renderBookings(bookings) {
     bookings.forEach((b) => {
       const bookedAt = new Date(b.createdAt).toLocaleString();
       html += `<tr>
-        <td>${b.id}</td>
-        <td>${b.userName}</td>
-        <td>${b.date}</td>
-        <td>${b.time}</td>
-        <td>${b.guests}</td>
-        <td>${b.tableLabel || "T" + b.tableId}</td>
-        <td><span class="badge ${b.status}">${b.status}</span></td>
-        <td>${bookedAt}</td>
+        <td>${esc(b.id)}</td>
+        <td>${esc(b.userName)}</td>
+        <td>${esc(b.date)}</td>
+        <td>${esc(b.time)}</td>
+        <td>${esc(b.guests)}</td>
+        <td>${esc(b.tableLabel || "T" + b.tableId)}</td>
+        <td><span class="badge ${esc(b.status)}">${esc(b.status)}</span></td>
+        <td>${esc(bookedAt)}</td>
       </tr>`;
     });
     html += "</tbody></table>";
@@ -269,8 +268,8 @@ function renderPendingStaff(pending) {
       div.className = "pending-request";
       div.innerHTML = `
         <div>
-          <strong>${s.name}</strong> (${s.email})<br>
-          <small>Phone: ${s.phone || "-"} | Requested: ${new Date(s.createdAt).toLocaleDateString()}</small>
+          <strong>${esc(s.name)}</strong> (${esc(s.email)})<br>
+          <small>Phone: ${esc(s.phone || "-")} | Requested: ${new Date(s.createdAt).toLocaleDateString()}</small>
         </div>
         <div class="actions">
           <button class="btn btn-success btn-small" onclick="approveStaff(${s.id})">Approve</button>
@@ -292,19 +291,22 @@ function renderAllStaff(allStaff) {
     </tr></thead><tbody>`;
     allStaff.forEach((s) => {
       html += `<tr>
-        <td>${s.id}</td>
-        <td>${s.name}</td>
-        <td>${s.email}</td>
-        <td>${s.phone || "-"}</td>
-        <td><span class="badge ${s.status}">${s.status}</span></td>
+        <td>${esc(s.id)}</td>
+        <td>${esc(s.name)}</td>
+        <td>${esc(s.email)}</td>
+        <td>${esc(s.phone || "-")}</td>
+        <td><span class="badge ${esc(s.status)}">${esc(s.status)}</span></td>
         <td>${new Date(s.createdAt).toLocaleDateString()}</td>
         <td>
-          <button class="btn btn-danger btn-small" onclick="removeStaff(${s.id}, '${s.name.replace(/'/g, "\\'")}')">Remove</button>
+          <button class="btn btn-danger btn-small" data-staff-id="${s.id}" data-staff-name="${esc(s.name)}">Remove</button>
         </td>
       </tr>`;
     });
     html += "</tbody></table>";
     el.innerHTML = html;
+    el.querySelectorAll("[data-staff-id]").forEach((btn) => {
+      btn.addEventListener("click", () => removeStaff(btn.dataset.staffId, btn.dataset.staffName));
+    });
   }
 }
 
@@ -542,43 +544,47 @@ function toBase64(file) {
 
 // ─── INIT ───
 (async () => {
+  // Optimistic render from cached data
+  if (user && token) {
+    document.getElementById("userInfo").textContent = "Owner";
+    loadDashboard();
+    showSection("dashboard");
+  }
+  // Always verify with server — the httpOnly cookie can restore the session
   try {
-      const res = await fetch("/api/auth/me", {
-        credentials: 'include',
-        headers: token ? { Authorization: "Bearer " + token } : {},
-      });
+    const headers = {};
+    if (token) headers.Authorization = "Bearer " + token;
+    const res = await fetch("/api/auth/me", { credentials: 'include', headers });
     const data = await res.json();
     if (data.user && data.token && data.user.role === "owner") {
       token = data.token;
       user = data.user;
       localStorage.setItem("ownerToken", token);
       localStorage.setItem("ownerUser", JSON.stringify(user));
-    } else {
-      const hadToken = !!token;
+      document.getElementById("userInfo").textContent = "Owner";
+      if (!document.getElementById("section-dashboard").classList.contains("active")) {
+        loadDashboard();
+        showSection("dashboard");
+      }
+    } else if (user) {
       localStorage.removeItem("ownerToken");
       localStorage.removeItem("ownerUser");
       token = null;
       user = null;
-      if (hadToken) {
-        showMsg("loginMsg", "Session expired. Please login again.", "info");
-      }
+      showMsg("loginMsg", "Session expired. Please login again.", "info");
+      showSection("login");
     }
   } catch {
-    /* ignore network errors */
-  }
-  if (token && user) {
-    document.getElementById("userInfo").textContent = "Owner";
-    loadDashboard();
-    showSection("dashboard");
+    if (!user || !token) {
+      showSection("login");
+    }
   }
 })();
-document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "visible" && token && user) {
-    try {
-      const res = await fetch("/api/auth/me", {
-        credentials: 'include',
-        headers: { Authorization: "Bearer " + token },
-      });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    const headers = {};
+    if (token) headers.Authorization = "Bearer " + token;
+    fetch("/api/auth/me", { credentials: 'include', headers }).then(async (res) => {
       const data = await res.json();
       if (data.user && data.token && data.user.role === "owner") {
         token = data.token;
@@ -586,29 +592,26 @@ document.addEventListener("visibilitychange", async () => {
         localStorage.setItem("ownerToken", token);
         localStorage.setItem("ownerUser", JSON.stringify(user));
       } else if (!data.user || data.user.role !== "owner") {
-        logout();
+        if (token || user) logout();
       }
-    } catch { /* ignore network errors */ }
+    }).catch(() => {});
   }
 });
 setInterval(async () => {
-  if (token && user) {
-    try {
-      const res = await fetch("/api/auth/me", {
-        credentials: 'include',
-        headers: { Authorization: "Bearer " + token },
-      });
-      const data = await res.json();
-      if (data.user && data.token && data.user.role === "owner") {
-        token = data.token;
-        user = data.user;
-        localStorage.setItem("ownerToken", token);
-        localStorage.setItem("ownerUser", JSON.stringify(user));
-      } else if (!data.user || data.user.role !== "owner") {
-        logout();
-      }
-    } catch { /* ignore network errors */ }
-  }
+  const headers = {};
+  if (token) headers.Authorization = "Bearer " + token;
+  try {
+    const res = await fetch("/api/auth/me", { credentials: 'include', headers });
+    const data = await res.json();
+    if (data.user && data.token && data.user.role === "owner") {
+      token = data.token;
+      user = data.user;
+      localStorage.setItem("ownerToken", token);
+      localStorage.setItem("ownerUser", JSON.stringify(user));
+    } else if (!data.user || data.user.role !== "owner") {
+      if (token || user) logout();
+    }
+  } catch { /* ignore network errors */ }
 }, 300000);
 </script>
 </body>

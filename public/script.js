@@ -2,6 +2,8 @@ const API = "";
 let token = localStorage.getItem("token");
 let user = JSON.parse(localStorage.getItem("user") || "null");
 
+function esc(str) { const d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
+
 function showSection(id) {
   document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
   const section = document.getElementById("section-" + id);
@@ -123,30 +125,28 @@ function switchAuthTab(tab) {
 
 // ─── BOOKING ───
 document.addEventListener("DOMContentLoaded", async () => {
-  // If we have cached token/user from localStorage, show UI immediately
+  // Optimistic render from cached data
   if (user && token) {
     updateNav();
     if (user.role === "user") updateBookingAuth();
   }
+  // Always verify with server — the httpOnly cookie can restore the session
   try {
-    const res = await fetch("/api/auth/me", {
-      credentials: 'include',
-      headers: token ? { Authorization: "Bearer " + token } : {},
-    });
+    const headers = {};
+    if (token) headers.Authorization = "Bearer " + token;
+    const res = await fetch("/api/auth/me", { credentials: 'include', headers });
     const data = await res.json();
     if (data.user && data.token) {
       token = data.token;
       user = data.user;
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-    } else if (!user) {
-      // Only clear if no cached user exists
+    } else if (user) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       token = null;
       user = null;
     }
-    // If data.user is null but we have cached user, keep the cached session
   } catch {
     if (!token && !user) {
       localStorage.removeItem("token");
@@ -154,7 +154,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       token = null;
       user = null;
     }
-    // On network error with valid cached session, keep it
   }
   updateNav();
   const today = new Date().toISOString().split("T")[0];
@@ -290,17 +289,20 @@ async function loadMyBookings() {
       const bookedAt = new Date(b.createdAt).toLocaleString();
       card.innerHTML = `
         <div class="details">
-          <span>${b.date}</span>
-          <span>${b.time}</span>
-          <span>${b.guests} guest${b.guests > 1 ? "s" : ""}</span>
-          <span>${b.tableLabel || "Table " + b.tableId}</span>
-          <span style="font-size:0.8em;color:#a0a0b0;">Booked: ${bookedAt}</span>
+          <span>${esc(b.date)}</span>
+          <span>${esc(b.time)}</span>
+          <span>${esc(b.guests)} guest${b.guests > 1 ? "s" : ""}</span>
+          <span>${esc(b.tableLabel || "Table " + b.tableId)}</span>
+          <span style="font-size:0.8em;color:#a0a0b0;">Booked: ${esc(bookedAt)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span class="status ${b.status}">${b.status}</span>
-          ${canCancel ? `<button class="btn btn-danger btn-small" onclick="cancelBooking(${b.id}, ${b.date === today ? 'true' : 'false'})">Cancel</button>` : ""}
+          <span class="status ${esc(b.status)}">${esc(b.status)}</span>
+          ${canCancel ? `<button class="btn btn-danger btn-small" data-booking-id="${b.id}" data-booking-today="${b.date === today}">Cancel</button>` : ""}
         </div>
       `;
+      card.querySelector("[data-booking-id]")?.addEventListener("click", function() {
+        cancelBooking(+this.dataset.bookingId, this.dataset.bookingToday === "true");
+      });
       list.appendChild(card);
     });
   } catch {

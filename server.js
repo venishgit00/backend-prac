@@ -3,18 +3,52 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
+const compression = require("compression");
+const rateLimit = require("express-rate-limit");
+const helmet = require("helmet");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || "cafe-management-secret-key-2024";
+const JWT_SECRET = process.env.JWT_SECRET;
+const OWNER_EMAIL = process.env.OWNER_EMAIL || "owner@cafe.com";
+const OWNER_PASSWORD = process.env.OWNER_PASSWORD || "owner123";
+
+if (!JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET environment variable is not set");
+  process.exit(1);
+}
+if (!process.env.DATABASE_URL) {
+  console.error("FATAL: DATABASE_URL environment variable is not set");
+  process.exit(1);
+}
 
 app.set("trust proxy", 1);
+
+app.use(compression());
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
 const cors = require("cors");
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true,
 }));
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Too many attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/users/login", authLimiter);
+app.use("/api/users/register", authLimiter);
+app.use("/api/staff/login", authLimiter);
+app.use("/api/owner/login", authLimiter);
 
 app.use(express.json({ limit: "10mb" }));
 app.use((req, res, next) => {
@@ -24,13 +58,19 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), {
+  maxAge: process.env.NODE_ENV === "production" ? "1y" : 0,
+  immutable: true,
+}));
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes("neon.tech")
     ? { rejectUnauthorized: false }
     : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 async function initDB() {
@@ -342,18 +382,18 @@ app.post("/api/staff/request", async (req, res) => {
 app.post("/api/owner/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (email !== "owner@cafe.com" || password !== "owner123")
+    if (email !== OWNER_EMAIL || password !== OWNER_PASSWORD)
       return res.status(401).json({ error: "Invalid credentials" });
 
     const row = await pool.query("SELECT value FROM settings WHERE key = 'owner_token_version'");
     const currentVersion = row.rows[0]?.value || 0;
     const token = jwt.sign(
-      { id: 0, email: "owner@cafe.com", name: "Owner", role: "owner", token_version: currentVersion },
+      { id: 0, email: OWNER_EMAIL, name: "Owner", role: "owner", token_version: currentVersion },
       JWT_SECRET,
       { expiresIn: "30d" }
     );
     setTokenCookie(req, res, token);
-    res.json({ token, user: { id: 0, name: "Owner", email: "owner@cafe.com", role: "owner" } });
+    res.json({ token, user: { id: 0, name: "Owner", email: OWNER_EMAIL, role: "owner" } });
   } catch {
     res.status(500).json({ error: "Server error" });
   }
@@ -627,7 +667,7 @@ app.get("/api/bookings/all", authMiddleware("staff"), async (req, res) => {
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Cafe Management Server running on http://localhost:${PORT}`);
-    console.log(`Owner login: owner@cafe.com / owner123`);
+    console.log(`Owner login: ${OWNER_EMAIL} / ${OWNER_PASSWORD.replace(/./g, "*")}`);
   });
 }).catch((e) => {
   console.error("Database initialization failed:", e);

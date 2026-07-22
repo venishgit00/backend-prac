@@ -1,4 +1,6 @@
 node_modules/
+.env
 data/database.sqlite*
 data/*.json
 !data/tables.json
+public/uploads/*

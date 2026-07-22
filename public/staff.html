@@ -115,6 +115,8 @@ function getToken() { return localStorage.getItem(LS_KEY); }
 function setToken(t) { if (t) localStorage.setItem(LS_KEY, t); else localStorage.removeItem(LS_KEY); }
 function setUser(u) { if (u) localStorage.setItem(USER_KEY, JSON.stringify(u)); else localStorage.removeItem(USER_KEY); }
 
+function esc(str) { const d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
+
 function clearLoginState() {
   setToken(null); setUser(null); user = null;
   document.getElementById("userInfo").textContent = "";
@@ -292,10 +294,10 @@ function renderUsers(users) {
     </tr></thead><tbody>`;
     users.forEach((u) => {
       html += `<tr>
-        <td>${u.id}</td>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
-        <td>${u.phone || "-"}</td>
+        <td>${esc(u.id)}</td>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.phone || "-")}</td>
         <td>${new Date(u.createdAt).toLocaleDateString()}</td>
       </tr>`;
     });
@@ -315,14 +317,14 @@ function renderBookings(bookings) {
     bookings.forEach((b) => {
       const bookedAt = new Date(b.createdAt).toLocaleString();
       html += `<tr>
-        <td>${b.id}</td>
-        <td>${b.userName}</td>
-        <td>${b.date}</td>
-        <td>${b.time}</td>
-        <td>${b.guests}</td>
-        <td>${b.tableLabel || "T" + b.tableId}</td>
-        <td><span class="badge ${b.status}">${b.status}</span></td>
-        <td>${bookedAt}</td>
+        <td>${esc(b.id)}</td>
+        <td>${esc(b.userName)}</td>
+        <td>${esc(b.date)}</td>
+        <td>${esc(b.time)}</td>
+        <td>${esc(b.guests)}</td>
+        <td>${esc(b.tableLabel || "T" + b.tableId)}</td>
+        <td><span class="badge ${esc(b.status)}">${esc(b.status)}</span></td>
+        <td>${esc(bookedAt)}</td>
       </tr>`;
     });
     html += "</tbody></table>";
@@ -353,47 +355,41 @@ function switchTab(tab) {
 
 // ─── INIT ───
 (async () => {
-  const savedToken = getToken();
-  if (savedToken) {
-    // Use cached user info immediately to show UI
-    if (user) {
-      document.getElementById("userInfo").textContent = user.name + " (staff)";
-      loadDashboard();
-      showSection("dashboard");
-    }
-    try {
-      const res = await fetch("/api/auth/me", {
-        credentials: 'include',
-        headers: { Authorization: "Bearer " + savedToken },
-      });
-      const data = await res.json();
-      if (data.user && data.user.role === "staff") {
-        user = data.user;
-        if (data.token) setToken(data.token);
-        setUser(user);
-      } else if (data.removed) {
-        clearLoginState();
-        showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
-        showSection("login");
-        return;
-      } else if (!user) {
-        // No cached user and API says no user
-        clearLoginState();
-        return;
-      }
-    } catch {
-      // Network error - keep cached user if we have one
-      if (!user) {
-        clearLoginState();
-        return;
-      }
-    }
-  }
-  if (user) {
+  // Optimistic render from cached data
+  if (user && getToken()) {
     document.getElementById("userInfo").textContent = user.name + " (staff)";
-    if (document.getElementById("section-dashboard").classList.contains("active") === false) {
-      loadDashboard();
-      showSection("dashboard");
+    loadDashboard();
+    showSection("dashboard");
+  }
+  // Always verify with server — the httpOnly cookie can restore the session
+  // even if localStorage was cleared
+  try {
+    const headers = {};
+    const t = getToken();
+    if (t) headers.Authorization = "Bearer " + t;
+    const res = await fetch("/api/auth/me", { credentials: 'include', headers });
+    const data = await res.json();
+    if (data.user && data.user.role === "staff") {
+      user = data.user;
+      if (data.token) setToken(data.token);
+      setUser(user);
+      document.getElementById("userInfo").textContent = user.name + " (staff)";
+      if (!document.getElementById("section-dashboard").classList.contains("active")) {
+        loadDashboard();
+        showSection("dashboard");
+      }
+    } else if (data.removed) {
+      clearLoginState();
+      showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
+      showSection("login");
+    } else if (user) {
+      clearLoginState();
+      showSection("login");
+    }
+  } catch {
+    if (!user || !getToken()) {
+      clearLoginState();
+      showSection("login");
     }
   }
 })();
