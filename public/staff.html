@@ -145,7 +145,7 @@ async function refreshLogin() {
     showSection("login");
     return false;
   } catch {
-    clearLoginState();
+    document.getElementById("userInfo").textContent = "";
     showMsg("loginMsg", "Connection error. Please try again.", "error");
     showSection("login");
     return false;
@@ -364,8 +364,8 @@ function switchTab(tab) {
         clearLoginState();
       }
     } catch {
-      clearLoginState();
       showMsg("loginMsg", "Connection error. Please try again.", "error");
+      return;
     }
   }
   if (user) {

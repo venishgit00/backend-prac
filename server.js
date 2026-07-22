@@ -163,13 +163,20 @@ function setTokenCookie(req, res, token) {
 }
 
 async function getCurrentTokenVersion(role, id) {
-  if (role === "owner") {
-    const row = await pool.query("SELECT value FROM settings WHERE key = 'owner_token_version'");
-    return row.rows[0]?.value || 0;
+  const doQuery = async () => {
+    if (role === "owner") {
+      const row = await pool.query("SELECT value FROM settings WHERE key = 'owner_token_version'");
+      return row.rows[0]?.value || 0;
+    }
+    const table = role === "user" ? "users" : "staff";
+    const row = await pool.query(`SELECT token_version FROM ${table} WHERE id = $1`, [id]);
+    return row.rows[0]?.token_version ?? 0;
+  };
+  try {
+    return await doQuery();
+  } catch {
+    return await doQuery();
   }
-  const table = role === "user" ? "users" : "staff";
-  const row = await pool.query(`SELECT token_version FROM ${table} WHERE id = $1`, [id]);
-  return row.rows[0]?.token_version ?? 0;
 }
 
 function authMiddleware(role) {
