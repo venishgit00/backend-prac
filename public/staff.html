@@ -115,6 +115,15 @@ function getToken() { return localStorage.getItem(LS_KEY); }
 function setToken(t) { if (t) localStorage.setItem(LS_KEY, t); else localStorage.removeItem(LS_KEY); }
 function setUser(u) { if (u) localStorage.setItem(USER_KEY, JSON.stringify(u)); else localStorage.removeItem(USER_KEY); }
 
+function clearLoginState() {
+  setToken(null); setUser(null); user = null;
+  document.getElementById("userInfo").textContent = "";
+  ["usersList", "bookingsList"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = "";
+  });
+}
+
 async function refreshLogin() {
   const t = getToken();
   if (!t) return false;
@@ -127,28 +136,26 @@ async function refreshLogin() {
       setUser(user);
       return true;
     }
+    clearLoginState();
     if (data.removed) {
-      setToken(null); setUser(null); user = null;
       showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
-      showSection("login");
-      return false;
+    } else {
+      showMsg("loginMsg", "Session expired. Please login again.", "error");
     }
-    setToken(null); setUser(null); user = null;
+    showSection("login");
     return false;
-  } catch { return false; }
+  } catch {
+    clearLoginState();
+    showMsg("loginMsg", "Connection error. Please try again.", "error");
+    showSection("login");
+    return false;
+  }
 }
 
 async function logout(msg) {
   try { await fetch("/api/logout", { method: "POST", credentials: 'include' }); } catch {}
-  setToken(null);
-  setUser(null);
-  user = null;
+  clearLoginState();
   showSection("login");
-  document.getElementById("userInfo").textContent = "";
-  ["usersList", "bookingsList"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = "";
-  });
   if (msg) showMsg("loginMsg", msg, "error");
 }
 
@@ -248,7 +255,10 @@ async function loadSection(url, targetId, renderFn) {
         });
         if (retry.ok) { renderFn(await retry.json()); return true; }
       }
-      logout("Session expired. Please login again.");
+      ["usersList", "bookingsList"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = "";
+      });
       return false;
     }
     if (!res.ok) {
@@ -348,13 +358,14 @@ function switchTab(tab) {
         if (data.token) setToken(data.token);
         setUser(user);
       } else if (data.removed) {
-        setToken(null); setUser(null); user = null;
+        clearLoginState();
         showMsg("loginMsg", "Your access has been revoked by the owner.", "info");
       } else {
-        setToken(null); setUser(null); user = null;
+        clearLoginState();
       }
     } catch {
-      if (!user) { setToken(null); setUser(null); }
+      clearLoginState();
+      showMsg("loginMsg", "Connection error. Please try again.", "error");
     }
   }
   if (user) {

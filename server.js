@@ -157,7 +157,7 @@ function setTokenCookie(req, res, token) {
   res.cookie("token", token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: "none",
+    sameSite: isProd ? "none" : "lax",
     maxAge: 365 * 24 * 60 * 60 * 1000,
   });
 }
