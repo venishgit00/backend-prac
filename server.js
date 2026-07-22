@@ -65,7 +65,7 @@ app.use(express.static(path.join(__dirname, "public"), {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes("neon.tech")
+  ssl: process.env.NODE_ENV === "production" || process.env.DATABASE_URL?.includes("neon.tech")
     ? { rejectUnauthorized: false }
     : false,
   max: 20,

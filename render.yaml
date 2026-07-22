@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: la-maison-cafe
+    runtime: node
+    repo: https://github.com/your-username/your-repo
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: la-maison-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OWNER_EMAIL
+        value: owner@cafe.com
+      - key: OWNER_PASSWORD
+        value: owner123
+      - key: FRONTEND_URL
+        value: https://la-maison-cafe.onrender.com
+
+databases:
+  - name: la-maison-db
+    plan: free
+    databaseName: cafe

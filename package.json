@@ -4,7 +4,7 @@
   "description": "Complete cafe/restaurant website with booking and staff management",
   "main": "server.js",
   "engines": {
-    "node": "22.x"
+    "node": ">=18.0.0"
   },
   "scripts": {
     "start": "node server.js",
