@@ -42,7 +42,8 @@ function initDB() {
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       phone TEXT DEFAULT '',
-      createdAt TEXT NOT NULL
+      createdAt TEXT NOT NULL,
+      token_version INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS staff (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +54,8 @@ function initDB() {
       status TEXT DEFAULT 'pending',
       addedBy INTEGER DEFAULT NULL,
       notified INTEGER DEFAULT 1,
-      createdAt TEXT NOT NULL
+      createdAt TEXT NOT NULL,
+      token_version INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS bookings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,6 +78,9 @@ function initDB() {
       label TEXT NOT NULL
     );
   `);
+
+  try { db.exec("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0"); } catch {}
+  try { db.exec("ALTER TABLE staff ADD COLUMN token_version INTEGER DEFAULT 0"); } catch {}
 
   const tableCount = db.prepare("SELECT COUNT(*) as count FROM tables").get();
   if (tableCount.count === 0) {
