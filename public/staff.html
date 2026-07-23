@@ -93,7 +93,8 @@
 const API = "";
 const LS_KEY = "staff_token";
 const USER_KEY = "staff_user";
-let user = JSON.parse(localStorage.getItem(USER_KEY) || "null");
+let user = null;
+try { user = JSON.parse(localStorage.getItem(USER_KEY)) || null; } catch {}
 
 function showSection(id) {
   document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
