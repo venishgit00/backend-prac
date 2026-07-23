@@ -114,7 +114,7 @@ function clearMsg(elId) {
 
 function getToken() { return localStorage.getItem(LS_KEY); }
 function setToken(t) { if (t) localStorage.setItem(LS_KEY, t); else localStorage.removeItem(LS_KEY); }
-function setUser(u) { if (u) localStorage.setItem(USER_KEY, JSON.stringify(u)); else localStorage.removeItem(USER_KEY); }
+function setUser(u) { if (u) { try { localStorage.setItem(USER_KEY, JSON.stringify(u)); } catch {} } else localStorage.removeItem(USER_KEY); }
 
 function esc(str) { const d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
 
