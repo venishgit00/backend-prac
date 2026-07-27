@@ -467,12 +467,12 @@ app.post("/api/logout", async (req, res) => {
 // ─── STAFF MANAGEMENT ───
 
 app.get("/api/staff/pending", authMiddleware("owner"), async (req, res) => {
-  const rows = await pool.query("SELECT * FROM staff WHERE status = 'pending'");
+  const rows = await pool.query(`SELECT id, name, email, phone, status, createdat AS "createdAt" FROM staff WHERE status = 'pending'`);
   res.json(rows.rows);
 });
 
 app.get("/api/staff/all", authMiddleware("owner"), async (req, res) => {
-  const rows = await pool.query("SELECT * FROM staff");
+  const rows = await pool.query(`SELECT id, name, email, phone, status, createdat AS "createdAt" FROM staff`);
   res.json(rows.rows);
 });
 
@@ -541,7 +541,7 @@ app.post("/api/bookings/create", authMiddleware("user"), async (req, res) => {
 
     const createdAt = new Date().toISOString();
     const result = await pool.query(
-      "INSERT INTO bookings (userId, userName, userEmail, date, time, guests, tableId, tableLabel, status, createdAt) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed', $9) RETURNING *",
+      `INSERT INTO bookings (userId, userName, userEmail, date, time, guests, tableId, tableLabel, status, createdAt) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'confirmed', $9) RETURNING id, userid AS "userId", username AS "userName", useremail AS "userEmail", date, time, guests, tableid AS "tableId", tablelabel AS "tableLabel", status, createdat AS "createdAt"`,
       [req.user.id, req.user.name, req.user.email, date, time, guests, tableId, table.rows[0].label, createdAt]
     );
 
@@ -569,7 +569,7 @@ app.get("/api/tables/available", async (req, res) => {
 });
 
 app.get("/api/bookings/my", authMiddleware("user"), async (req, res) => {
-  const rows = await pool.query("SELECT * FROM bookings WHERE userId = $1", [req.user.id]);
+  const rows = await pool.query(`SELECT id, userid AS "userId", username AS "userName", useremail AS "userEmail", date, time, guests, tableid AS "tableId", tablelabel AS "tableLabel", status, createdat AS "createdAt" FROM bookings WHERE userid = $1`, [req.user.id]);
   res.json(rows.rows);
 });
 
@@ -653,12 +653,12 @@ app.post("/api/offers/remove-image", authMiddleware("owner"), (req, res) => {
 // ─── STAFF DASHBOARD ───
 
 app.get("/api/users/all", authMiddleware("staff"), async (req, res) => {
-  const rows = await pool.query("SELECT id, name, email, phone, createdAt FROM users");
+  const rows = await pool.query(`SELECT id, name, email, phone, createdat AS "createdAt" FROM users`);
   res.json(rows.rows);
 });
 
 app.get("/api/bookings/all", authMiddleware("staff"), async (req, res) => {
-  const rows = await pool.query("SELECT * FROM bookings");
+  const rows = await pool.query(`SELECT id, userid AS "userId", username AS "userName", useremail AS "userEmail", date, time, guests, tableid AS "tableId", tablelabel AS "tableLabel", status, createdat AS "createdAt" FROM bookings`);
   res.json(rows.rows);
 });
 
