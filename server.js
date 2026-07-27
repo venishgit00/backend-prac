@@ -298,6 +298,8 @@ app.post("/api/staff/register", authMiddleware("owner"), async (req, res) => {
     const { name, email, password, phone } = req.body;
     if (!name || !email || !password)
       return res.status(400).json({ error: "Name, email, password required" });
+    if (phone && !/^\d{10}$/.test(phone))
+      return res.status(400).json({ error: "Phone number must be exactly 10 digits" });
 
     const existing = await pool.query("SELECT id FROM staff WHERE email = $1", [email]);
     if (existing.rows[0]) return res.status(400).json({ error: "Email already exists" });

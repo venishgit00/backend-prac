@@ -90,7 +90,7 @@
                     </div>
                     <div class="form-group">
                         <label for="addStaffPhone">Phone</label>
-                        <input type="tel" id="addStaffPhone">
+                        <input type="tel" id="addStaffPhone" pattern="[0-9]{10}" title="Phone number must be exactly 10 digits">
                     </div>
                     <div class="form-group">
                         <label for="addStaffPassword">Password</label>
@@ -397,6 +397,8 @@ document.getElementById("addStaffForm").addEventListener("submit", async (e) => 
   const email = document.getElementById("addStaffEmail").value;
   const phone = document.getElementById("addStaffPhone").value;
   const password = document.getElementById("addStaffPassword").value;
+  if (phone && !/^\d{10}$/.test(phone))
+    return showMsg("addStaffMsg", "Phone number must be exactly 10 digits", "error");
   try {
     const res = await fetch(API + "/api/staff/register", {
       method: "POST",
