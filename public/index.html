@@ -101,21 +101,6 @@
                 </form>
                 <div id="userLoginMsg" class="msg"></div>
             </div>
-            <div id="userOtpForm" style="display:none;">
-                <p style="text-align:center;color:#a0a0b0;margin-bottom:16px;">A verification code was sent to <strong id="userOtpEmailDisplay"></strong></p>
-                <form id="userOtpFormInner">
-                    <div class="form-group">
-                        <label for="userOtpInput">Verification Code</label>
-                        <input type="text" id="userOtpInput" maxlength="6" inputmode="numeric" pattern="\d{6}" required placeholder="000000" autocomplete="one-time-code">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Verify</button>
-                </form>
-                <div style="text-align:center;margin-top:12px;">
-                    <button class="btn btn-small" onclick="userResendOTP()" style="background:none;border:1px solid #555;color:#a0a0b0;padding:6px 16px;border-radius:6px;cursor:pointer;">Resend Code</button>
-                    <button class="btn btn-small" onclick="userBackToLogin()" style="background:none;border:none;color:#c9a96e;cursor:pointer;margin-left:12px;">&larr; Back to Login</button>
-                </div>
-                <div id="userOtpMsg" class="msg"></div>
-            </div>
             <div id="authRegisterForm" style="display:none;">
                 <form id="userRegisterForm">
                     <div class="form-group">

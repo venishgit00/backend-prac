@@ -32,21 +32,6 @@
                 </form>
                 <div id="loginMsg" class="msg"></div>
             </div>
-            <div id="authOtpForm" style="display:none;">
-                <p style="text-align:center;color:#a0a0b0;margin-bottom:16px;">A verification code was sent to <strong id="otpEmailDisplay"></strong></p>
-                <form id="otpForm">
-                    <div class="form-group">
-                        <label for="otpInput">Verification Code</label>
-                        <input type="text" id="otpInput" maxlength="6" inputmode="numeric" pattern="\d{6}" required placeholder="000000" autocomplete="one-time-code">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Verify</button>
-                </form>
-                <div style="text-align:center;margin-top:12px;">
-                    <button class="btn btn-small" onclick="resendOTP()" style="background:none;border:1px solid #555;color:#a0a0b0;padding:6px 16px;border-radius:6px;cursor:pointer;">Resend Code</button>
-                    <button class="btn btn-small" onclick="backToLogin()" style="background:none;border:none;color:#c9a96e;cursor:pointer;margin-left:12px;">&larr; Back to Login</button>
-                </div>
-                <div id="otpMsg" class="msg"></div>
-            </div>
             <div id="authRegisterForm" style="display:none;">
                 <p class="form-desc">Submit a request. The owner will be notified and must approve your account.</p>
                 <form id="staffRequestForm">
@@ -188,7 +173,6 @@ async function logout(msg) {
 // ─── AUTH TAB SWITCHING ───
 function switchAuthTab(tab) {
   document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
-  document.getElementById("authOtpForm").style.display = "none";
   if (tab === "login") {
     document.querySelector(".auth-tab:nth-child(1)").classList.add("active");
     document.getElementById("authLoginForm").style.display = "block";
@@ -201,8 +185,6 @@ function switchAuthTab(tab) {
 }
 
 // ─── LOGIN ───
-let loginEmail = "";
-
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   clearMsg("loginMsg");
@@ -224,16 +206,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       }
       return;
     }
-    if (data.requiresOtp) {
-      loginEmail = data.email;
-      document.getElementById("otpEmailDisplay").textContent = loginEmail;
-      document.getElementById("authLoginForm").style.display = "none";
-      document.getElementById("authOtpForm").style.display = "block";
-      document.getElementById("otpInput").value = "";
-      document.getElementById("otpInput").focus();
-      clearMsg("loginMsg");
-      return;
-    }
     setToken(data.token);
     user = data.user;
     setUser(user);
@@ -249,55 +221,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     showMsg("loginMsg", "Connection error", "error");
   }
 });
-
-document.getElementById("otpForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  clearMsg("otpMsg");
-  const otp = document.getElementById("otpInput").value.trim();
-  if (!otp || otp.length !== 6) { showMsg("otpMsg", "Enter the 6-digit code", "error"); return; }
-  try {
-    const res = await fetch(API + "/api/staff/verify-otp", {
-      method: "POST",
-      credentials: 'include',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail, otp }),
-    });
-    const data = await res.json();
-    if (!res.ok) { showMsg("otpMsg", data.error || "Invalid code", "error"); return; }
-    setToken(data.token);
-    user = data.user;
-    setUser(user);
-    document.getElementById("userInfo").textContent = user.name + " (staff)";
-    document.getElementById("authOtpForm").style.display = "none";
-    document.getElementById("authLoginForm").style.display = "block";
-    loadDashboard();
-    showSection("dashboard");
-  } catch {
-    showMsg("otpMsg", "Connection error", "error");
-  }
-});
-
-async function resendOTP() {
-  clearMsg("otpMsg");
-  try {
-    const res = await fetch(API + "/api/auth/resend-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail, role: "staff" }),
-    });
-    const data = await res.json();
-    if (!res.ok) { showMsg("otpMsg", data.error || "Failed to resend", "error"); return; }
-    showMsg("otpMsg", "Code resent to your email", "success");
-  } catch {
-    showMsg("otpMsg", "Connection error", "error");
-  }
-}
-
-function backToLogin() {
-  document.getElementById("authOtpForm").style.display = "none";
-  document.getElementById("authLoginForm").style.display = "block";
-  clearMsg("otpMsg");
-}
 
 // ─── STAFF REQUEST ───
 document.getElementById("staffRequestForm").addEventListener("submit", async (e) => {

@@ -6,9 +6,6 @@ const { Pool } = require("pg");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
-const nodemailer = require("nodemailer");
-const crypto = require("crypto");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -24,19 +21,15 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-// ─── SMTP TRANSPORTER ───
+const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.ethereal.email",
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: parseInt(process.env.SMTP_PORT) === 465,
-  auth: {
-    user: process.env.SMTP_USER || "test",
-    pass: process.env.SMTP_PASS || "test",
-  },
-});
-
-const SMTP_FROM = process.env.SMTP_FROM || "noreply@cafe.com";
+function isEmailAllowed(email) {
+  if (ALLOWED_EMAILS.length === 0) return true;
+  return ALLOWED_EMAILS.includes(email.toLowerCase());
+}
 
 app.set("trust proxy", 1);
 
@@ -65,9 +58,6 @@ app.use("/api/users/login", authLimiter);
 app.use("/api/users/register", authLimiter);
 app.use("/api/staff/login", authLimiter);
 app.use("/api/owner/login", authLimiter);
-app.use("/api/users/verify-otp", authLimiter);
-app.use("/api/staff/verify-otp", authLimiter);
-app.use("/api/auth/resend-otp", authLimiter);
 
 app.use(express.json({ limit: "10mb" }));
 app.use((req, res, next) => {
@@ -146,18 +136,6 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value INTEGER NOT NULL DEFAULT 0
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS otps (
-      id SERIAL PRIMARY KEY,
-      email TEXT NOT NULL,
-      code TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'user',
-      expires_at TIMESTAMP NOT NULL,
-      verified BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT NOW()
     )
   `);
 
@@ -250,69 +228,6 @@ async function getCurrentTokenVersion(role, id) {
   }
 }
 
-// ─── OTP HELPERS ───
-
-const OTP_EXPIRY_MINUTES = 10;
-const OTP_LENGTH = 6;
-
-function generateOTP() {
-  return crypto.randomInt(10 ** (OTP_LENGTH - 1), 10 ** OTP_LENGTH).toString();
-}
-
-async function storeOTP(email, code, role) {
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString();
-  await pool.query(
-    "INSERT INTO otps (email, code, role, expires_at) VALUES ($1, $2, $3, $4)",
-    [email, code, role, expiresAt]
-  );
-}
-
-async function sendOTPEmail(email, code) {
-  const hasSMTP = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-  if (!hasSMTP) {
-    console.log(`[DEV OTP] ${code} for ${email}`);
-    return;
-  }
-  try {
-    await transporter.sendMail({
-      from: SMTP_FROM,
-      to: email,
-      subject: "Your Login Verification Code",
-      text: `Your verification code is: ${code}\n\nThis code expires in ${OTP_EXPIRY_MINUTES} minutes.\n\nIf you didn't request this, please ignore.`,
-      html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e0e0e0;border-radius:12px">
-        <h2 style="color:#1a1a2e;margin:0 0 8px">Verification Code</h2>
-        <p style="color:#555;margin:0 0 20px">Use this code to complete your login:</p>
-        <div style="font-size:36px;font-weight:700;letter-spacing:8px;text-align:center;padding:16px;background:#f5f5f5;border-radius:8px;color:#1a1a2e">${code}</div>
-        <p style="color:#999;font-size:13px;margin:20px 0 0">Expires in ${OTP_EXPIRY_MINUTES} minutes. If you didn't request this, ignore this email.</p>
-      </div>`,
-    });
-  } catch (err) {
-    console.error("Failed to send OTP email:", err.message);
-  }
-}
-
-async function verifyOTP(email, code, role) {
-  const row = await pool.query(
-    "SELECT id FROM otps WHERE email = $1 AND code = $2 AND role = $3 AND expires_at > NOW() AND verified = FALSE ORDER BY created_at DESC LIMIT 1",
-    [email, code, role]
-  );
-  if (!row.rows[0]) return false;
-  await pool.query("UPDATE otps SET verified = TRUE WHERE id = $1", [row.rows[0].id]);
-  return true;
-}
-
-async function cleanupExpiredOTPs() {
-  try {
-    await pool.query("DELETE FROM otps WHERE expires_at < NOW() OR verified = TRUE");
-  } catch {}
-}
-
-async function createAndSendOTP(email, role) {
-  const code = generateOTP();
-  await storeOTP(email, code, role);
-  await sendOTPEmail(email, code);
-}
-
 function authMiddleware(role) {
   return async (req, res, next) => {
     const cookies = parseCookies(req);
@@ -340,6 +255,9 @@ app.post("/api/users/register", async (req, res) => {
     const { name, email, password, phone } = req.body;
     if (!name || !email || !password)
       return res.status(400).json({ error: "Name, email, password required" });
+
+    if (!isEmailAllowed(email))
+      return res.status(403).json({ error: "Registration is restricted to authorized email addresses only" });
 
     const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
     if (existing.rows[0]) return res.status(400).json({ error: "Email already registered" });
@@ -374,24 +292,6 @@ app.post("/api/users/login", async (req, res) => {
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (!user.rows[0] || !(await bcrypt.compare(password, user.rows[0].password)))
       return res.status(401).json({ error: "Invalid credentials" });
-
-    await createAndSendOTP(email, "user");
-    res.json({ message: "OTP sent to your email", email, requiresOtp: true });
-  } catch {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-app.post("/api/users/verify-otp", async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ error: "Email and OTP required" });
-
-    const valid = await verifyOTP(email, otp, "user");
-    if (!valid) return res.status(401).json({ error: "Invalid or expired OTP" });
-
-    const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if (!user.rows[0]) return res.status(401).json({ error: "User not found" });
 
     const token = jwt.sign(
       { id: user.rows[0].id, email: user.rows[0].email, name: user.rows[0].name, role: "user", token_version: user.rows[0].token_version || 0 },
@@ -449,41 +349,18 @@ app.post("/api/staff/login", async (req, res) => {
     if (s.status === "removed")
       return res.status(403).json({ error: "Your access has been revoked by the owner." });
 
+    const showApproval = s.notified === 0;
     if (s.notified === 0) {
       await pool.query("UPDATE staff SET notified = 1 WHERE id = $1", [s.id]);
     }
 
-    await createAndSendOTP(email, "staff");
-    res.json({
-      message: "OTP sent to your email",
-      email,
-      requiresOtp: true,
-      showApproval: s.notified === 0,
-    });
-  } catch {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-app.post("/api/staff/verify-otp", async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ error: "Email and OTP required" });
-
-    const valid = await verifyOTP(email, otp, "staff");
-    if (!valid) return res.status(401).json({ error: "Invalid or expired OTP" });
-
-    const staff = await pool.query("SELECT * FROM staff WHERE email = $1", [email]);
-    if (!staff.rows[0]) return res.status(401).json({ error: "Staff not found" });
-
-    const s = staff.rows[0];
     const token = jwt.sign(
       { id: s.id, email: s.email, name: s.name, role: "staff", token_version: s.token_version || 0 },
       JWT_SECRET,
       { expiresIn: "100y" }
     );
     setTokenCookie(req, res, token);
-    res.json({ token, user: { id: s.id, name: s.name, email: s.email, role: "staff" } });
+    res.json({ token, user: { id: s.id, name: s.name, email: s.email, role: "staff" }, showApproval });
   } catch {
     res.status(500).json({ error: "Server error" });
   }
@@ -511,20 +388,6 @@ app.post("/api/staff/request", async (req, res) => {
       message: "Registration request sent. Waiting for owner approval.",
       staff: { id: result.rows[0].id, name, email, status: "pending" },
     });
-  } catch {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-app.post("/api/auth/resend-otp", async (req, res) => {
-  try {
-    const { email, role } = req.body;
-    if (!email || !role) return res.status(400).json({ error: "Email and role required" });
-    if (!["user", "staff"].includes(role))
-      return res.status(400).json({ error: "Invalid role" });
-
-    await createAndSendOTP(email, role);
-    res.json({ message: "OTP resent to your email" });
   } catch {
     res.status(500).json({ error: "Server error" });
   }
@@ -812,10 +675,6 @@ app.get("/api/bookings/all", authMiddleware("staff"), async (req, res) => {
   const rows = await pool.query(`SELECT id, userid AS "userId", username AS "userName", useremail AS "userEmail", date, time, guests, tableid AS "tableId", tablelabel AS "tableLabel", status, createdat AS "createdAt" FROM bookings`);
   res.json(rows.rows);
 });
-
-// ─── OTP CLEANUP ───
-
-setInterval(cleanupExpiredOTPs, 15 * 60 * 1000);
 
 // ─── START ───
 
