@@ -290,8 +290,10 @@ app.post("/api/users/login", async (req, res) => {
     const staffCheck = await pool.query("SELECT id FROM staff WHERE email = $1", [email]);
     if (staffCheck.rows[0]) return res.status(401).json({ error: "This email belongs to a staff account. Please use the staff login." });
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if (!user.rows[0] || !(await bcrypt.compare(password, user.rows[0].password)))
-      return res.status(401).json({ error: "Invalid credentials" });
+    if (!user.rows[0])
+      return res.status(401).json({ error: "Email id not available" });
+    if (!(await bcrypt.compare(password, user.rows[0].password)))
+      return res.status(401).json({ error: "Incorrect password" });
 
     const token = jwt.sign(
       { id: user.rows[0].id, email: user.rows[0].email, name: user.rows[0].name, role: "user", token_version: user.rows[0].token_version || 0 },
@@ -338,8 +340,10 @@ app.post("/api/staff/login", async (req, res) => {
     const userCheck = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
     if (userCheck.rows[0]) return res.status(401).json({ error: "This email belongs to a customer account. Please use the customer login." });
     const staff = await pool.query("SELECT * FROM staff WHERE email = $1", [email]);
-    if (!staff.rows[0] || !(await bcrypt.compare(password, staff.rows[0].password)))
-      return res.status(401).json({ error: "Invalid credentials" });
+    if (!staff.rows[0])
+      return res.status(401).json({ error: "Email id not available" });
+    if (!(await bcrypt.compare(password, staff.rows[0].password)))
+      return res.status(401).json({ error: "Incorrect password" });
 
     const s = staff.rows[0];
     if (s.status === "pending")
@@ -396,8 +400,10 @@ app.post("/api/staff/request", async (req, res) => {
 app.post("/api/owner/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (email !== OWNER_EMAIL || password !== OWNER_PASSWORD)
-      return res.status(401).json({ error: "Invalid credentials" });
+    if (email !== OWNER_EMAIL)
+      return res.status(401).json({ error: "Email id not available" });
+    if (password !== OWNER_PASSWORD)
+      return res.status(401).json({ error: "Incorrect password" });
 
     const row = await pool.query("SELECT value FROM settings WHERE key = 'owner_token_version'");
     const currentVersion = row.rows[0]?.value || 0;
