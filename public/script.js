@@ -57,6 +57,8 @@ function clearMsg(elId) {
 }
 
 // ─── USER LOGIN ───
+let userLoginEmail = "";
+
 document.getElementById("userLoginForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearMsg("userLoginMsg");
@@ -71,6 +73,16 @@ document.getElementById("userLoginForm")?.addEventListener("submit", async (e) =
     });
     const data = await res.json();
     if (!res.ok) return showMsg("userLoginMsg", data.error, "error");
+    if (data.requiresOtp) {
+      userLoginEmail = data.email;
+      document.getElementById("userOtpEmailDisplay").textContent = userLoginEmail;
+      document.getElementById("authLoginForm").style.display = "none";
+      document.getElementById("userOtpForm").style.display = "block";
+      document.getElementById("userOtpInput").value = "";
+      document.getElementById("userOtpInput").focus();
+      clearMsg("userLoginMsg");
+      return;
+    }
     token = data.token;
     user = data.user;
     localStorage.setItem("token", token);
@@ -81,6 +93,55 @@ document.getElementById("userLoginForm")?.addEventListener("submit", async (e) =
     showMsg("userLoginMsg", "Connection error", "error");
   }
 });
+
+document.getElementById("userOtpFormInner")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  clearMsg("userOtpMsg");
+  const otp = document.getElementById("userOtpInput").value.trim();
+  if (!otp || otp.length !== 6) { showMsg("userOtpMsg", "Enter the 6-digit code", "error"); return; }
+  try {
+    const res = await fetch(API + "/api/users/verify-otp", {
+      method: "POST",
+      credentials: 'include',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: userLoginEmail, otp }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showMsg("userOtpMsg", data.error || "Invalid code", "error"); return; }
+    token = data.token;
+    user = data.user;
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    document.getElementById("userOtpForm").style.display = "none";
+    document.getElementById("authLoginForm").style.display = "block";
+    updateNav();
+    showSection("booking");
+  } catch {
+    showMsg("userOtpMsg", "Connection error", "error");
+  }
+});
+
+async function userResendOTP() {
+  clearMsg("userOtpMsg");
+  try {
+    const res = await fetch(API + "/api/auth/resend-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: userLoginEmail, role: "user" }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showMsg("userOtpMsg", data.error || "Failed to resend", "error"); return; }
+    showMsg("userOtpMsg", "Code resent to your email", "success");
+  } catch {
+    showMsg("userOtpMsg", "Connection error", "error");
+  }
+}
+
+function userBackToLogin() {
+  document.getElementById("userOtpForm").style.display = "none";
+  document.getElementById("authLoginForm").style.display = "block";
+  clearMsg("userOtpMsg");
+}
 
 // ─── USER REGISTER ───
 document.getElementById("userRegisterForm")?.addEventListener("submit", async (e) => {
@@ -113,6 +174,7 @@ document.getElementById("userRegisterForm")?.addEventListener("submit", async (e
 // ─── AUTH TAB SWITCHING ───
 function switchAuthTab(tab) {
   document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
+  document.getElementById("userOtpForm").style.display = "none";
   if (tab === "login") {
     document.querySelector(".auth-tab:nth-child(1)").classList.add("active");
     document.getElementById("authLoginForm").style.display = "block";
