@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Complete cafe/restaurant website with booking and staff management",
   "main": "server.js",
+  "type": "commonjs",
   "engines": {
     "node": ">=18.0.0"
   },
