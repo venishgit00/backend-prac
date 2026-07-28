@@ -281,34 +281,70 @@ async function loadMyBookings() {
       list.innerHTML = "<p style='color:#a0a0b0;'>No bookings yet.</p>";
       return;
     }
+
+    const upcoming = bookings.filter((b) => !b.isPast);
+    const past = bookings.filter((b) => b.isPast);
+
+    upcoming.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    past.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
+
     list.innerHTML = "";
-    const today = new Date().toISOString().split("T")[0];
-    bookings.forEach((b) => {
-      const card = document.createElement("div");
-      card.className = "booking-card";
-      const canCancel = b.status === "confirmed";
-      const bookedAt = new Date(b.createdAt).toLocaleString();
-      card.innerHTML = `
-        <div class="details">
-          <span>${esc(b.date)}</span>
-          <span>${esc(b.time)}</span>
-          <span>${esc(b.guests)} guest${b.guests > 1 ? "s" : ""}</span>
-          <span>${esc(b.tableLabel || "Table " + b.tableId)}</span>
-          <span style="font-size:0.8em;color:#a0a0b0;">Booked: ${esc(bookedAt)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="status ${esc(b.status)}">${esc(b.status)}</span>
-          ${canCancel ? `<button class="btn btn-danger btn-small" data-booking-id="${b.id}" data-booking-today="${b.date === today}">Cancel</button>` : ""}
-        </div>
-      `;
-      card.querySelector("[data-booking-id]")?.addEventListener("click", function() {
-        cancelBooking(+this.dataset.bookingId, this.dataset.bookingToday === "true");
+
+    if (upcoming.length) {
+      const heading = document.createElement("h3");
+      heading.textContent = "Upcoming Bookings";
+      heading.style.margin = "16px 0 8px";
+      heading.style.color = "#c9a96e";
+      list.appendChild(heading);
+
+      upcoming.forEach((b) => {
+        const card = createBookingCard(b);
+        list.appendChild(card);
       });
-      list.appendChild(card);
-    });
+    }
+
+    if (past.length) {
+      const heading = document.createElement("h3");
+      heading.textContent = "Past Bookings";
+      heading.style.margin = "24px 0 8px";
+      heading.style.color = "#a0a0b0";
+      list.appendChild(heading);
+
+      past.forEach((b) => {
+        const card = createBookingCard(b);
+        card.style.opacity = "0.6";
+        list.appendChild(card);
+      });
+    }
   } catch {
     // silent
   }
+}
+
+function createBookingCard(b) {
+  const card = document.createElement("div");
+  card.className = "booking-card";
+  const canCancel = b.status === "confirmed" && !b.isPast;
+  const today = new Date().toISOString().split("T")[0];
+  const bookedAt = new Date(b.createdAt).toLocaleString();
+  const statusText = b.isPast ? "Completed" : b.status;
+  card.innerHTML = `
+    <div class="details">
+      <span>${esc(b.date)}</span>
+      <span>${esc(b.time)}</span>
+      <span>${esc(b.guests)} guest${b.guests > 1 ? "s" : ""}</span>
+      <span>${esc(b.tableLabel || "Table " + b.tableId)}</span>
+      <span style="font-size:0.8em;color:#a0a0b0;">Booked: ${esc(bookedAt)}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="status ${esc(b.isPast ? "completed" : b.status)}">${esc(statusText)}</span>
+      ${canCancel ? `<button class="btn btn-danger btn-small" data-booking-id="${b.id}" data-booking-today="${b.date === today}">Cancel</button>` : ""}
+    </div>
+  `;
+  card.querySelector("[data-booking-id]")?.addEventListener("click", function() {
+    cancelBooking(+this.dataset.bookingId, this.dataset.bookingToday === "true");
+  });
+  return card;
 }
 
 async function cancelBooking(bookingId, isSameDay) {

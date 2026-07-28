@@ -575,10 +575,16 @@ app.get("/api/tables/available", async (req, res) => {
   const { date, time, guests } = req.query;
   const allTables = await pool.query("SELECT * FROM tables");
 
-  const bookedRows = await pool.query(
-    "SELECT tableId FROM bookings WHERE date = $1 AND time = $2 AND status = 'confirmed'",
-    [date, time]
-  );
+  const now = new Date();
+const kolkata = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+const todayKolkata = kolkata.toISOString().split("T")[0];
+const currentTimeKolkata = kolkata.toTimeString().slice(0, 5);
+
+const bookedRows = await pool.query(
+  `SELECT tableId FROM bookings WHERE date = $1 AND time = $2 AND status = 'confirmed'
+   AND NOT (date < $3 OR (date = $3 AND time <= $4))`,
+  [date, time, todayKolkata, currentTimeKolkata]
+);
   const bookedIds = bookedRows.rows.map((r) => r.tableid);
 
   const available = allTables.rows.filter((t) => !bookedIds.includes(t.id));
@@ -588,10 +594,16 @@ app.get("/api/tables/available", async (req, res) => {
   res.json({ available: filtered, booked, all: allTables.rows });
 });
 
-app.get("/api/bookings/my", authMiddleware("user"), async (req, res) => {
-  const rows = await pool.query(`SELECT id, userid AS "userId", username AS "userName", useremail AS "userEmail", date, time, guests, tableid AS "tableId", tablelabel AS "tableLabel", status, createdat AS "createdAt" FROM bookings WHERE userid = $1`, [req.user.id]);
-  res.json(rows.rows);
-});
+const now = new Date();
+const kolkata = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+const todayKolkata = kolkata.toISOString().split("T")[0];
+const currentTimeKolkata = kolkata.toTimeString().slice(0, 5);
+
+const bookedRows = await pool.query(
+  `SELECT tableId FROM bookings WHERE date = $1 AND time = $2 AND status = 'confirmed'
+   AND NOT (date < $3 OR (date = $3 AND time <= $4))`,
+  [date, time, todayKolkata, currentTimeKolkata]
+);
 
 app.post("/api/bookings/cancel", authMiddleware("user"), async (req, res) => {
   try {
@@ -681,6 +693,21 @@ app.get("/api/bookings/all", authMiddleware("staff"), async (req, res) => {
   const rows = await pool.query(`SELECT id, userid AS "userId", username AS "userName", useremail AS "userEmail", date, time, guests, tableid AS "tableId", tablelabel AS "tableLabel", status, createdat AS "createdAt" FROM bookings`);
   res.json(rows.rows);
 });
+
+function expirePastBookings() {
+  const now = new Date();
+  const kolkata = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const today = kolkata.toISOString().split("T")[0];        // e.g. "2026-07-28"
+  const currentTime = kolkata.toTimeString().slice(0, 5);   // e.g. "19:30"
+
+  pool.query(
+    `UPDATE bookings SET status = 'completed' WHERE status = 'confirmed' AND (date < $1 OR (date = $1 AND time <= $2))`,
+    [today, currentTime]
+  ).catch((e) => console.error("Expire bookings error:", e));
+}
+
+setInterval(expirePastBookings, 5 * 60 * 1000);
+expirePastBookings();
 
 // ─── START ───
 
