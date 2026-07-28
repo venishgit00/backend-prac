@@ -576,15 +576,15 @@ app.get("/api/tables/available", async (req, res) => {
   const allTables = await pool.query("SELECT * FROM tables");
 
   const now = new Date();
-const kolkata = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-const todayKolkata = kolkata.toISOString().split("T")[0];
-const currentTimeKolkata = kolkata.toTimeString().slice(0, 5);
+  const kolkata = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const todayKolkata = kolkata.toISOString().split("T")[0];
+  const currentTimeKolkata = kolkata.toTimeString().slice(0, 5);
 
-const bookedRows = await pool.query(
-  `SELECT tableId FROM bookings WHERE date = $1 AND time = $2 AND status = 'confirmed'
-   AND NOT (date < $3 OR (date = $3 AND time <= $4))`,
-  [date, time, todayKolkata, currentTimeKolkata]
-);
+  const bookedRows = await pool.query(
+    `SELECT tableId FROM bookings WHERE date = $1 AND time = $2 AND status = 'confirmed'
+     AND NOT (date < $3 OR (date = $3 AND time <= $4))`,
+    [date, time, todayKolkata, currentTimeKolkata]
+  );
   const bookedIds = bookedRows.rows.map((r) => r.tableid);
 
   const available = allTables.rows.filter((t) => !bookedIds.includes(t.id));
@@ -594,16 +594,21 @@ const bookedRows = await pool.query(
   res.json({ available: filtered, booked, all: allTables.rows });
 });
 
-const now = new Date();
-const kolkata = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-const todayKolkata = kolkata.toISOString().split("T")[0];
-const currentTimeKolkata = kolkata.toTimeString().slice(0, 5);
+app.get("/api/bookings/my", authMiddleware("user"), async (req, res) => {
+  const rows = await pool.query(`SELECT id, userid AS "userId", username AS "userName", useremail AS "userEmail", date, time, guests, tableid AS "tableId", tablelabel AS "tableLabel", status, createdat AS "createdAt" FROM bookings WHERE userid = $1`, [req.user.id]);
 
-const bookedRows = await pool.query(
-  `SELECT tableId FROM bookings WHERE date = $1 AND time = $2 AND status = 'confirmed'
-   AND NOT (date < $3 OR (date = $3 AND time <= $4))`,
-  [date, time, todayKolkata, currentTimeKolkata]
-);
+  const now = new Date();
+  const kolkata = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const todayKolkata = kolkata.toISOString().split("T")[0];
+  const currentTimeKolkata = kolkata.toTimeString().slice(0, 5);
+
+  const enriched = rows.rows.map((b) => ({
+    ...b,
+    isPast: b.date < todayKolkata || (b.date === todayKolkata && b.time <= currentTimeKolkata),
+  }));
+
+  res.json(enriched);
+});
 
 app.post("/api/bookings/cancel", authMiddleware("user"), async (req, res) => {
   try {
